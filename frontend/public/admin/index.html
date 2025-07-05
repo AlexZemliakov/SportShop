@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель | SportShop</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="admin-container">
+  <header class="admin-header">
+    <h1>Админ-панель SportShop</h1>
+    <nav>
+      <a href="/">На главную</a>
+    </nav>
+  </header>
+
+  <section class="product-management">
+    <div class="add-product-form">
+      <h2>Добавить товар</h2>
+      <div class="form-group">
+        <input type="text" id="productName" placeholder="Название товара" required>
+      </div>
+      <div class="form-group">
+        <input type="number" id="productPrice" placeholder="Цена" step="0.01" min="0" required>
+      </div>
+      <div class="form-group">
+        <input type="number" id="productStock" placeholder="Количество" min="0" required>
+      </div>
+      <div class="form-group">
+        <input type="text" id="productImage" placeholder="URL изображения">
+      </div>
+      <button class="btn-primary" onclick="addProduct()">Добавить товар</button>
+    </div>
+
+    <div class="product-list">
+      <h2>Список товаров</h2>
+      <div class="table-container">
+        <table id="productsTable">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Цена</th>
+            <th>Количество</th>
+            <th>Действия</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', loadProducts);
+
+  async function loadProducts() {
+    const response = await fetch('/api/products');
+    const products = await response.json();
+
+    const tbody = document.querySelector('#productsTable tbody');
+    tbody.innerHTML = '';
+
+    products.forEach(product => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+                    <td>${product.id}</td>
+                    <td>${product.name}</td>
+                    <td>${product.price.toFixed(2)} ₽</td>
+                    <td>${product.stock}</td>
+                    <td>
+                        <button class="btn-danger" onclick="deleteProduct(${product.id})">Удалить</button>
+                    </td>
+                `;
+      tbody.appendChild(row);
+    });
+  }
+
+  async function addProduct() {
+    const product = {
+      name: document.getElementById('productName').value,
+      price: parseFloat(document.getElementById('productPrice').value),
+      stock: parseInt(document.getElementById('productStock').value),
+      image_url: document.getElementById('productImage').value || null
+    };
+
+    await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(product)
+    });
+
+    // Очищаем форму
+    document.getElementById('productName').value = '';
+    document.getElementById('productPrice').value = '';
+    document.getElementById('productStock').value = '';
+    document.getElementById('productImage').value = '';
+
+    // Обновляем список
+    loadProducts();
+  }
+
+  async function deleteProduct(id) {
+    if (confirm('Вы уверены, что хотите удалить этот товар?')) {
+      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      loadProducts();
+    }
+  }
+</script>
+</body>
+</html>

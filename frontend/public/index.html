@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SportShop - Магазин </title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="main-container">
+    <header class="main-header">
+        <h1>SportShop</h1>
+        <p>Лучший протеин только у нас</p>
+
+    </header>
+
+    <main class="product-grid">
+        <h2>Наши товары</h2>
+        <div class="products-container" id="productsContainer">
+            <!-- Товары будут загружены через JavaScript -->
+            <div class="loading">Загрузка товаров...</div>
+        </div>
+    </main>
+
+    <footer class="main-footer">
+        <p>© SportShop - быстро, надежно, качественно.</p>
+    </footer>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadProducts);
+
+    async function loadProducts() {
+        try {
+            const response = await fetch('/api/products');
+            const products = await response.json();
+
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+
+            if (products.length === 0) {
+                container.innerHTML = '<div class="empty">Товары отсутствуют</div>';
+                return;
+            }
+
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                productCard.innerHTML = `
+                        <div class="product-image">
+                            ${product.image_url ?
+                    `<img src="${product.image_url}" alt="${product.name}">` :
+                    '<div class="no-image">Нет изображения</div>'}
+                        </div>
+                        <div class="product-info">
+                            <h3>${product.name}</h3>
+                            <div class="product-price">${product.price.toFixed(2)} ₽</div>
+                            <div class="product-stock">Остаток: ${product.stock} шт.</div>
+                            <button class="btn-cart">В корзину</button>
+                        </div>
+                    `;
+                container.appendChild(productCard);
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки товаров:', error);
+            document.getElementById('productsContainer').innerHTML =
+                '<div class="error">Ошибка загрузки товаров</div>';
+        }
+    }
+</script>
+</body>
+</html>
