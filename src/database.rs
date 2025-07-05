@@ -1,6 +1,6 @@
-use sqlx::{SqlitePool, Error};
+use sqlx::{SqlitePool, migrate::MigrateError};
 
-pub async fn init_db() -> Result<SqlitePool, Error> {
+pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     let database_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL must be set");
 
@@ -10,9 +10,8 @@ pub async fn init_db() -> Result<SqlitePool, Error> {
     Ok(pool)
 }
 
-pub async fn run_migrations(pool: &SqlitePool) -> Result<(), Error> {
+pub async fn run_migrations(pool: &SqlitePool) -> Result<(), MigrateError> {
     sqlx::migrate!("./migrations")
         .run(pool)
         .await
-
 }

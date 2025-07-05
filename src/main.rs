@@ -1,7 +1,6 @@
 use actix_web::{web, App, HttpServer};
-use dotenv::dotenv;
-use sqlx::sqlite::SqlitePool;
-use std::env;
+use actix_files::Files;
+use std::path::Path;
 
 mod api;
 mod models;
@@ -9,7 +8,14 @@ mod database;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
+    dotenv::dotenv().ok();
+
+    // Получаем абсолютный путь к frontend/public
+    let public_dir = Path::new("frontend/public")
+        .canonicalize()
+        .expect("Failed to resolve public directory");
+
+    println!("Serving files from: {}", public_dir.display());
 
     let pool = database::init_db().await
         .expect("Failed to initialize database");
@@ -19,12 +25,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .configure(api::config)
             .service(
-                actix_files::Files::new("/", "./frontend/public")
-                    .index_file("index.html"),
-            )
-            .service(
-                actix_files::Files::new("/admin", "./frontend/public/admin")
-                    .index_file("index.html"),
+                Files::new("/", &public_dir)
+                    .index_file("index.html")
+                    .show_files_listing(),
             )
     })
         .bind("127.0.0.1:8080")?

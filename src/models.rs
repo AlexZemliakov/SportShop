@@ -16,8 +16,8 @@ pub struct Product {
     pub name: String,
     pub price: f64,
     pub stock: i32,
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub created_at: Option<NaiveDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>, // Изменено на String для простоты
 }
 
 
