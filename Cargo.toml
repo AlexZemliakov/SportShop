@@ -1,0 +1,12 @@
+[package]
+name = "SportShop"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4.0"  # или axum = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio-native-tls"] }
+tokio = { version = "1.0", features = ["full"] }
+dotenv = "0.15"
+tonic = "0.9"  # для работы с TON
