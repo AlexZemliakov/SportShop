@@ -40,3 +40,45 @@ async function deleteProduct(id) {
     await fetch(`/api/products/${id}`, { method: 'DELETE' });
     loadProducts();
 }
+
+// Добавьте в admin.js
+async function loadCategories() {
+    const response = await fetch('/api/categories');
+    const categories = await response.json();
+    const list = document.getElementById('categories-list');
+    list.innerHTML = categories.map(cat => `
+        <div class="category-item">
+            <h3>${cat.name}</h3>
+            <p>${cat.description || ''}</p>
+            <button onclick="deleteCategory(${cat.id})">Удалить</button>
+        </div>
+    `).join('');
+}
+
+async function deleteCategory(id) {
+    const response = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    const success = await response.json();
+    if (success) {
+        loadCategories();
+    } else {
+        alert('Нельзя удалить категорию с товарами!');
+    }
+}
+
+document.getElementById('category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const category = {
+        name: document.getElementById('category-name').value,
+        description: document.getElementById('category-description').value,
+        image_url: document.getElementById('category-image').value
+    };
+    await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(category)
+    });
+    loadCategories();
+    e.target.reset();
+});
+
+// Вызовите loadCategories() при загрузке страницы

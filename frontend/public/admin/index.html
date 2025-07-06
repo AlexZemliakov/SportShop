@@ -5,6 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Админ-панель | SportShop</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    .admin-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #f5f5f5;
+      margin-right: 5px;
+      border-radius: 5px 5px 0 0;
+    }
+    .admin-tab.active {
+      background: #3498db;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .btn-primary {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-edit {
+      background: #f39c12;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .table-container {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background: #f5f5f5;
+    }
+  </style>
 </head>
 <body>
 <div class="admin-container">
@@ -15,34 +93,64 @@
     </nav>
   </header>
 
-  <section class="product-management">
+  <div class="admin-tabs">
+    <div class="admin-tab active" data-tab="products">Товары</div>
+    <div class="admin-tab" data-tab="categories">Категории</div>
+  </div>
+
+  <!-- Вкладка товаров -->
+  <div id="productsTab" class="tab-content active">
     <div class="add-product-form">
       <h2>Добавить товар</h2>
+      <input type="hidden" id="editProductId">
       <div class="form-group">
+        <label for="productName">Название товара</label>
         <input type="text" id="productName" placeholder="Название товара" required>
       </div>
       <div class="form-group">
+        <label for="productDescription">Описание</label>
+        <textarea id="productDescription" placeholder="Описание товара" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="productPrice">Цена</label>
         <input type="number" id="productPrice" placeholder="Цена" step="0.01" min="0" required>
       </div>
       <div class="form-group">
+        <label for="productStock">Количество</label>
         <input type="number" id="productStock" placeholder="Количество" min="0" required>
       </div>
       <div class="form-group">
+        <label for="productImage">URL изображения</label>
         <input type="text" id="productImage" placeholder="URL изображения">
       </div>
-      <button class="btn-primary" onclick="addProduct()">Добавить товар</button>
+      <div class="form-group">
+        <label for="productCategory">Категория</label>
+        <select id="productCategory">
+          <option value="">Без категории</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="saveProductBtn">Добавить товар</button>
+      <button class="btn-danger" id="cancelEditBtn" style="display: none;">Отмена</button>
     </div>
 
     <div class="product-list">
       <h2>Список товаров</h2>
+      <div class="form-group">
+        <label for="productCategoryFilter">Фильтр по категории:</label>
+        <select id="productCategoryFilter">
+          <option value="all">Все категории</option>
+        </select>
+      </div>
       <div class="table-container">
         <table id="productsTable">
           <thead>
           <tr>
             <th>ID</th>
             <th>Название</th>
+            <th>Описание</th>
             <th>Цена</th>
             <th>Количество</th>
+            <th>Категория</th>
             <th>Действия</th>
           </tr>
           </thead>
@@ -50,64 +158,341 @@
         </table>
       </div>
     </div>
-  </section>
+  </div>
+
+  <!-- Вкладка категорий -->
+  <div id="categoriesTab" class="tab-content">
+    <div class="add-category-form">
+      <h2>Добавить категорию</h2>
+      <input type="hidden" id="editCategoryId">
+      <div class="form-group">
+        <label for="categoryName">Название категории</label>
+        <input type="text" id="categoryName" placeholder="Название категории" required>
+      </div>
+      <div class="form-group">
+        <label for="categoryDescription">Описание</label>
+        <textarea id="categoryDescription" placeholder="Описание категории"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="categoryImage">URL изображения</label>
+        <input type="text" id="categoryImage" placeholder="URL изображения">
+      </div>
+      <button class="btn-primary" id="saveCategoryBtn">Добавить категорию</button>
+      <button class="btn-danger" id="cancelEditCategoryBtn" style="display: none;">Отмена</button>
+    </div>
+
+    <div class="category-list">
+      <h2>Список категорий</h2>
+      <div class="table-container">
+        <table id="categoriesTable">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Описание</th>
+            <th>Действия</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', loadProducts);
+  // Переключение вкладок
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-  async function loadProducts() {
-    const response = await fetch('/api/products');
-    const products = await response.json();
+      tab.classList.add('active');
+      document.getElementById(`${tab.dataset.tab}Tab`).classList.add('active');
 
-    const tbody = document.querySelector('#productsTable tbody');
-    tbody.innerHTML = '';
-
-    products.forEach(product => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-                    <td>${product.id}</td>
-                    <td>${product.name}</td>
-                    <td>${product.price.toFixed(2)} ₽</td>
-                    <td>${product.stock}</td>
-                    <td>
-                        <button class="btn-danger" onclick="deleteProduct(${product.id})">Удалить</button>
-                    </td>
-                `;
-      tbody.appendChild(row);
+      if (tab.dataset.tab === 'categories') {
+        loadCategories();
+      } else {
+        loadProducts();
+      }
     });
+  });
+
+  // Загрузка категорий для выпадающих списков
+  async function loadCategoriesForSelect() {
+    try {
+      const response = await fetch('/api/categories');
+      const categories = await response.json();
+
+      const productCategorySelect = document.getElementById('productCategory');
+      const filterCategorySelect = document.getElementById('productCategoryFilter');
+
+      // Очищаем и добавляем опции
+      productCategorySelect.innerHTML = '<option value="">Без категории</option>';
+      filterCategorySelect.innerHTML = '<option value="all">Все категории</option>';
+
+      categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        productCategorySelect.appendChild(option.cloneNode(true));
+        filterCategorySelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error('Ошибка загрузки категорий:', error);
+    }
   }
 
-  async function addProduct() {
+  // Загрузка товаров
+  async function loadProducts(categoryId = null) {
+    try {
+      const url = categoryId && categoryId !== 'all'
+              ? `/api/categories/${categoryId}/products`
+              : '/api/products';
+
+      const response = await fetch(url);
+      const products = await response.json();
+
+      const tbody = document.querySelector('#productsTable tbody');
+      tbody.innerHTML = '';
+
+      if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">Товары отсутствуют</td></tr>';
+        return;
+      }
+
+      products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${product.id}</td>
+          <td>${product.name}</td>
+          <td>${product.description}</td>
+          <td>${product.price.toFixed(2)} ₽</td>
+          <td>${product.stock}</td>
+          <td>${getCategoryName(product.category_id)}</td>
+          <td>
+            <button class="btn-edit" onclick="editProduct(${product.id})">Редактировать</button>
+            <button class="btn-danger" onclick="deleteProduct(${product.id})">Удалить</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    } catch (error) {
+      console.error('Ошибка загрузки товаров:', error);
+      document.querySelector('#productsTable tbody').innerHTML =
+              '<tr><td colspan="7">Ошибка загрузки товаров</td></tr>';
+    }
+  }
+
+  // Получение названия категории
+  function getCategoryName(categoryId) {
+    if (!categoryId) return 'Без категории';
+    const select = document.getElementById('productCategory');
+    const option = select.querySelector(`option[value="${categoryId}"]`);
+    return option ? option.textContent : 'Неизвестно';
+  }
+
+  // Загрузка категорий
+  async function loadCategories() {
+    try {
+      const response = await fetch('/api/categories');
+      const categories = await response.json();
+
+      const tbody = document.querySelector('#categoriesTable tbody');
+      tbody.innerHTML = '';
+
+      if (categories.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">Категории отсутствуют</td></tr>';
+        return;
+      }
+
+      categories.forEach(category => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${category.id}</td>
+          <td>${category.name}</td>
+          <td>${category.description || ''}</td>
+          <td>
+            <button class="btn-edit" onclick="editCategory(${category.id})">Редактировать</button>
+            <button class="btn-danger" onclick="deleteCategory(${category.id})">Удалить</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    } catch (error) {
+      console.error('Ошибка загрузки категорий:', error);
+      document.querySelector('#categoriesTable tbody').innerHTML =
+              '<tr><td colspan="4">Ошибка загрузки категорий</td></tr>';
+    }
+  }
+
+  // Фильтрация товаров по категории
+  document.getElementById('productCategoryFilter').addEventListener('change', function() {
+    loadProducts(this.value);
+  });
+
+  // Добавление/редактирование товара
+  document.getElementById('saveProductBtn').addEventListener('click', async function() {
+    const productId = document.getElementById('editProductId').value;
     const product = {
       name: document.getElementById('productName').value,
+      description: document.getElementById('productDescription').value,
       price: parseFloat(document.getElementById('productPrice').value),
       stock: parseInt(document.getElementById('productStock').value),
-      image_url: document.getElementById('productImage').value || null
+      image_url: document.getElementById('productImage').value || null,
+      category_id: document.getElementById('productCategory').value || null
     };
 
-    await fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product)
-    });
+    const url = productId ? `/api/products/${productId}` : '/api/products';
+    const method = productId ? 'PUT' : 'POST';
 
-    // Очищаем форму
+    try {
+      await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product)
+      });
+
+      resetProductForm();
+      loadProducts(document.getElementById('productCategoryFilter').value);
+    } catch (error) {
+      console.error('Ошибка сохранения товара:', error);
+      alert('Ошибка сохранения товара');
+    }
+  });
+
+  // Отмена редактирования товара
+  document.getElementById('cancelEditBtn').addEventListener('click', resetProductForm);
+
+  function resetProductForm() {
+    document.getElementById('editProductId').value = '';
     document.getElementById('productName').value = '';
+    document.getElementById('productDescription').value = '';
     document.getElementById('productPrice').value = '';
     document.getElementById('productStock').value = '';
     document.getElementById('productImage').value = '';
-
-    // Обновляем список
-    loadProducts();
+    document.getElementById('productCategory').value = '';
+    document.getElementById('saveProductBtn').textContent = 'Добавить товар';
+    document.getElementById('cancelEditBtn').style.display = 'none';
   }
 
-  async function deleteProduct(id) {
-    if (confirm('Вы уверены, что хотите удалить этот товар?')) {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      loadProducts();
+  // Редактирование товара
+  async function editProduct(id) {
+    try {
+      const response = await fetch(`/api/products/${id}`);
+      const product = await response.json();
+
+      document.getElementById('editProductId').value = product.id;
+      document.getElementById('productName').value = product.name;
+      document.getElementById('productDescription').value = product.description;
+      document.getElementById('productPrice').value = product.price;
+      document.getElementById('productStock').value = product.stock;
+      document.getElementById('productImage').value = product.image_url || '';
+      document.getElementById('productCategory').value = product.category_id || '';
+      document.getElementById('saveProductBtn').textContent = 'Сохранить изменения';
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    } catch (error) {
+      console.error('Ошибка загрузки товара:', error);
+      alert('Ошибка загрузки товара');
     }
   }
+
+  // Удаление товара
+  async function deleteProduct(id) {
+    if (confirm('Вы уверены, что хотите удалить этот товар?')) {
+      try {
+        await fetch(`/api/products/${id}`, { method: 'DELETE' });
+        loadProducts(document.getElementById('productCategoryFilter').value);
+      } catch (error) {
+        console.error('Ошибка удаления товара:', error);
+        alert('Ошибка удаления товара');
+      }
+    }
+  }
+
+  // Добавление/редактирование категории
+  document.getElementById('saveCategoryBtn').addEventListener('click', async function() {
+    const categoryId = document.getElementById('editCategoryId').value;
+    const category = {
+      name: document.getElementById('categoryName').value,
+      description: document.getElementById('categoryDescription').value || null,
+      image_url: document.getElementById('categoryImage').value || null
+    };
+
+    const url = categoryId ? `/api/categories/${categoryId}` : '/api/categories';
+    const method = categoryId ? 'PUT' : 'POST';
+
+    try {
+      await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(category)
+      });
+
+      resetCategoryForm();
+      loadCategories();
+      loadCategoriesForSelect();
+    } catch (error) {
+      console.error('Ошибка сохранения категории:', error);
+      alert('Ошибка сохранения категории');
+    }
+  });
+
+  // Отмена редактирования категории
+  document.getElementById('cancelEditCategoryBtn').addEventListener('click', resetCategoryForm);
+
+  function resetCategoryForm() {
+    document.getElementById('editCategoryId').value = '';
+    document.getElementById('categoryName').value = '';
+    document.getElementById('categoryDescription').value = '';
+    document.getElementById('categoryImage').value = '';
+    document.getElementById('saveCategoryBtn').textContent = 'Добавить категорию';
+    document.getElementById('cancelEditCategoryBtn').style.display = 'none';
+  }
+
+  // Редактирование категории
+  async function editCategory(id) {
+    try {
+      const response = await fetch(`/api/categories/${id}`);
+      const category = await response.json();
+
+      document.getElementById('editCategoryId').value = category.id;
+      document.getElementById('categoryName').value = category.name;
+      document.getElementById('categoryDescription').value = category.description || '';
+      document.getElementById('categoryImage').value = category.image_url || '';
+      document.getElementById('saveCategoryBtn').textContent = 'Сохранить изменения';
+      document.getElementById('cancelEditCategoryBtn').style.display = 'inline-block';
+    } catch (error) {
+      console.error('Ошибка загрузки категории:', error);
+      alert('Ошибка загрузки категории');
+    }
+  }
+
+  // Удаление категории
+  async function deleteCategory(id) {
+    if (confirm('Вы уверены, что хотите удалить эту категорию?')) {
+      try {
+        const response = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (response.ok) {
+          loadCategories();
+          loadCategoriesForSelect();
+        } else {
+          alert(result.error || 'Нельзя удалить категорию с товарами');
+        }
+      } catch (error) {
+        console.error('Ошибка удаления категории:', error);
+        alert('Ошибка удаления категории');
+      }
+    }
+  }
+
+  // Инициализация
+  document.addEventListener('DOMContentLoaded', function() {
+    loadCategoriesForSelect();
+    loadProducts();
+  });
 </script>
 </body>
 </html>
