@@ -16,9 +16,9 @@ pub struct Product {
     pub name: String,
     pub description: String,
     pub price: f64,
-    pub quantity: i32,
+    pub stock: i32,  // Было quantity, измените на stock
     pub image_url: Option<String>,
-    pub category_id: Option<i64>,  // Новое поле
+    pub category_id: Option<i64>,
 }
 
 

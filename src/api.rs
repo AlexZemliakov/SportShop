@@ -79,6 +79,7 @@ pub async fn create_product(
     pool: web::Data<sqlx::SqlitePool>,
     product: web::Json<CreateProduct>,
 ) -> impl Responder {
+    println!("Received product: {:?}", product); // Добавьте эту строку
     match sqlx::query(
         r#"
         INSERT INTO products (name, description, price, stock, image_url, category_id)

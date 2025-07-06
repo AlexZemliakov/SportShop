@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, HttpServer, HttpResponse};
 use actix_files::Files;
 use std::path::Path;
 
@@ -22,6 +22,12 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .app_data(web::JsonConfig::default().error_handler(|err, _req| {
+                actix_web::error::InternalError::from_response(
+                    err,
+                    HttpResponse::BadRequest().json("Invalid JSON"),
+                ).into()
+            }))
             .app_data(web::Data::new(pool.clone()))
             .configure(api::config)
             .service(

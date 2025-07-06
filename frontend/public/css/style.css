@@ -81,7 +81,7 @@ nav a:hover {
     margin-bottom: 1rem;
 }
 
-input {
+input, textarea, select {
     width: 100%;
     padding: 0.75rem;
     background-color: var(--bg-card);
@@ -89,11 +89,18 @@ input {
     border-radius: 4px;
     color: var(--text-primary);
     font-size: 1rem;
+    margin-top: 0.5rem;
 }
 
-input:focus {
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(98, 0, 234, 0.2);
 }
 
 button {
@@ -103,6 +110,12 @@ button {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s;
+    font-size: 1rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    margin-right: 0.5rem;
 }
 
 .btn-primary {
@@ -123,6 +136,15 @@ button {
     background-color: var(--danger-hover);
 }
 
+.btn-edit {
+    background-color: #f39c12;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #e67e22;
+}
+
 .btn-cart {
     background-color: var(--success-color);
     color: white;
@@ -133,12 +155,15 @@ button {
 /* Таблицы */
 .table-container {
     overflow-x: auto;
+    margin: 1rem 0;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    padding: 1rem;
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    margin: 1rem 0;
 }
 
 th, td {
@@ -150,6 +175,10 @@ th, td {
 th {
     background-color: var(--bg-darker);
     font-weight: 600;
+}
+
+tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Карточки товаров */
@@ -173,6 +202,7 @@ th {
     border-radius: 8px;
     overflow: hidden;
     transition: transform 0.3s;
+    cursor: pointer;
 }
 
 .product-card:hover {
@@ -219,6 +249,30 @@ th {
 }
 
 /* Сообщения */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    color: white;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+}
+
+.toast.success {
+    background-color: var(--success-color);
+}
+
+.toast.error {
+    background-color: var(--danger-color);
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
 .loading, .empty, .error {
     text-align: center;
     padding: 2rem;
@@ -235,6 +289,10 @@ th {
     .products-container {
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     }
+
+    .admin-container, .main-container {
+        padding: 1rem;
+    }
 }
 
 /* Категории */
@@ -242,17 +300,24 @@ th {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
 .category {
     padding: 10px 15px;
-    background: #f0f0f0;
+    background: var(--bg-card);
     border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.3s;
 }
 
 .category:hover {
-    background: #ddd;
+    background: var(--bg-darker);
+}
+
+.category.active {
+    background-color: var(--accent-color);
+    color: white;
 }
 
 /* Детали товара */
@@ -260,13 +325,63 @@ th {
     max-width: 600px;
     margin: 0 auto;
     padding: 20px;
-    background: white;
+    background: var(--bg-card);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .product-detail img {
     max-width: 100%;
     height: auto;
+    margin-bottom: 1rem;
 }
 
+/* Вкладки админки */
+.admin-tabs {
+    display: flex;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-tab {
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    margin-right: 0.5rem;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.3s;
+}
+
+.admin-tab.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.tab-content {
+    display: none;
+    padding: 1.5rem;
+    background-color: var(--bg-card);
+    border-radius: 0 8px 8px 8px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Формы в админке */
+.add-product-form, .add-category-form {
+    background-color: var(--bg-darker);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.add-product-form h2, .add-category-form h2 {
+    margin-bottom: 1.5rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
