@@ -63,13 +63,13 @@
     async function loadProductsByCategory(categoryId) {
         try {
             const response = await fetch(`/api/categories/${categoryId}/products`);
+            if (!response.ok) throw new Error('Ошибка загрузки товаров');
             const products = await response.json();
 
-            // Обновляем заголовок
-            const categoryName = document.querySelector(`.category[data-id="${categoryId}"]`).textContent;
-            document.getElementById('category-title').textContent = categoryName;
+            // Обновляем заголовок и активную категорию
+            document.getElementById('category-title').textContent =
+                document.querySelector(`.category[data-id="${categoryId}"]`).textContent;
 
-            // Обновляем активную категорию
             document.querySelectorAll('.category').forEach(c => c.classList.remove('active'));
             document.querySelector(`.category[data-id="${categoryId}"]`).classList.add('active');
 
@@ -111,9 +111,11 @@
     async function loadCategories() {
         try {
             const response = await fetch('/api/categories');
+            if (!response.ok) throw new Error('Ошибка загрузки категорий');
             const categories = await response.json();
 
             const nav = document.getElementById('categories-nav');
+            nav.innerHTML = '<div class="category all-categories active" onclick="loadAllProducts()">Все товары</div>';
 
             categories.forEach(category => {
                 const categoryElement = document.createElement('div');
@@ -125,6 +127,8 @@
             });
         } catch (error) {
             console.error('Ошибка загрузки категорий:', error);
+            document.getElementById('categories-nav').innerHTML =
+                '<div class="error">Ошибка загрузки категорий</div>';
         }
     }
 

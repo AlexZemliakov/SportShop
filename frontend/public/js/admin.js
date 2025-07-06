@@ -100,13 +100,16 @@ function renderProductsTable(products) {
 
 async function saveProduct() {
     const productId = document.getElementById('editProductId').value;
+    const categorySelect = document.getElementById('productCategory');
+    const categoryId = categorySelect.value ? parseInt(categorySelect.value) : null;
+
     const product = {
         name: document.getElementById('productName').value.trim(),
         description: document.getElementById('productDescription').value.trim(),
         price: parseFloat(document.getElementById('productPrice').value),
         stock: parseInt(document.getElementById('productStock').value),
         image_url: document.getElementById('productImage').value.trim() || null,
-        category_id: document.getElementById('productCategory').value || null
+        category_id: categoryId
     };
 
     // Валидация
@@ -118,13 +121,15 @@ async function saveProduct() {
 
         const response = await fetch(url, {
             method: method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(product)
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Ошибка сервера');
+            const errorData = await response.json();
+            throw new Error(errorData || 'Ошибка сервера');
         }
 
         resetProductForm();
@@ -132,7 +137,7 @@ async function saveProduct() {
         showSuccess(productId ? 'Товар обновлен' : 'Товар добавлен');
     } catch (error) {
         console.error('Ошибка сохранения товара:', error);
-        showError(error.message || 'Ошибка сохранения товара');
+        showError(`Ошибка сохранения товара: ${error.message}`);
     }
 }
 

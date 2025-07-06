@@ -1,8 +1,9 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, SqlitePool};
 
 #[derive(Debug, Serialize, FromRow)]
+#[allow(dead_code)]
 pub struct Product {
     pub id: i64,
     pub name: String,
@@ -76,10 +77,32 @@ pub async fn list_products(pool: web::Data<sqlx::SqlitePool>) -> impl Responder 
 }
 
 pub async fn create_product(
-    pool: web::Data<sqlx::SqlitePool>,
+    pool: web::Data<SqlitePool>,
     product: web::Json<CreateProduct>,
 ) -> impl Responder {
-    println!("Received product: {:?}", product); // Добавьте эту строку
+    println!("Received product: {:?}", product);
+
+    // Проверяем существование категории, если она указана
+    if let Some(category_id) = product.category_id {
+        let category_exists: bool = match sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
+        )
+            .bind(category_id)
+            .fetch_one(&**pool)
+            .await
+        {
+            Ok(exists) => exists,
+            Err(e) => {
+                eprintln!("Failed to check category existence: {}", e);
+                return HttpResponse::BadRequest().json("Failed to check category");
+            }
+        };
+
+        if !category_exists {
+            return HttpResponse::BadRequest().json("Category does not exist");
+        }
+    }
+
     match sqlx::query(
         r#"
         INSERT INTO products (name, description, price, stock, image_url, category_id)
@@ -98,7 +121,7 @@ pub async fn create_product(
         Ok(_) => HttpResponse::Created().json("Product created"),
         Err(e) => {
             eprintln!("Failed to create product: {}", e);
-            HttpResponse::InternalServerError().json("Failed to create product")
+            HttpResponse::InternalServerError().json(format!("Failed to create product: {}", e))
         }
     }
 }
