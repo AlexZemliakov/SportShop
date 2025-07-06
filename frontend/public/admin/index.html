@@ -6,81 +6,201 @@
   <title>Админ-панель | SportShop</title>
   <link rel="stylesheet" href="/css/style.css">
   <style>
+    /* Обновленные стили для админ-панели */
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      background-color: #1e1e1e;
+      color: #ffffff;
+    }
+
+    .admin-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #333333;
+    }
+
+    .admin-header h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: #2ecc71;
+    }
+
+    .admin-header nav a {
+      color: #3498db;
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+
+    .admin-header nav a:hover {
+      background-color: rgba(52, 152, 219, 0.1);
+    }
+
+    /* Стили вкладок */
     .admin-tabs {
       display: flex;
       margin-bottom: 20px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #333333;
     }
+
     .admin-tab {
-      padding: 10px 20px;
+      padding: 12px 24px;
       cursor: pointer;
-      background: #f5f5f5;
-      margin-right: 5px;
-      border-radius: 5px 5px 0 0;
+      background-color: #34495e;
+      color: #ecf0f1;
+      margin-right: 8px;
+      border-radius: 6px 6px 0 0;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      border: 1px solid transparent;
     }
+
     .admin-tab.active {
-      background: #3498db;
-      color: white;
+      background-color: #2ecc71;
+      color: #fff;
+      border-color: #27ae60;
+      box-shadow: 0 2px 5px rgba(46, 204, 113, 0.3);
     }
+
+    .admin-tab:hover:not(.active) {
+      background-color: #3d566e;
+      color: #fff;
+    }
+
+    /* Стили контента вкладок */
     .tab-content {
       display: none;
+      padding: 20px;
+      background-color: #2c3e50;
+      border-radius: 0 6px 6px 6px;
+      margin-top: -1px;
     }
+
     .tab-content.active {
       display: block;
     }
+
+    /* Формы */
     .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 1.5rem;
     }
+
     .form-group label {
       display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #ecf0f1;
     }
-    .form-group input, .form-group textarea, .form-group select {
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
       width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
+      padding: 0.75rem;
+      background-color: #34495e;
+      border: 1px solid #3d566e;
       border-radius: 4px;
+      color: #ecf0f1;
+      font-size: 1rem;
     }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    /* Кнопки */
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 1rem;
+    }
+
     .btn-primary {
-      background: #3498db;
+      background-color: #3498db;
       color: white;
-      border: none;
-      padding: 8px 15px;
-      border-radius: 4px;
-      cursor: pointer;
     }
+
+    .btn-primary:hover {
+      background-color: #2980b9;
+    }
+
     .btn-danger {
-      background: #e74c3c;
+      background-color: #e74c3c;
       color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
     }
+
+    .btn-danger:hover {
+      background-color: #c0392b;
+    }
+
     .btn-edit {
-      background: #f39c12;
+      background-color: #f39c12;
       color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 5px;
+      margin-right: 0.5rem;
     }
+
+    .btn-edit:hover {
+      background-color: #d35400;
+    }
+
+    /* Таблицы */
     .table-container {
       overflow-x: auto;
+      margin-top: 2rem;
+      background-color: #2c3e50;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
     }
+
     th, td {
-      padding: 10px;
+      padding: 1rem;
       text-align: left;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #3d566e;
     }
+
     th {
-      background: #f5f5f5;
+      background-color: #34495e;
+      font-weight: 600;
+      color: #ecf0f1;
+    }
+
+    tr:hover {
+      background-color: rgba(52, 152, 219, 0.1);
+    }
+
+    /* Сообщения */
+    .empty, .error {
+      padding: 1rem;
+      text-align: center;
+      color: #bdc3c7;
+      background-color: #34495e;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+
+    .error {
+      color: #e74c3c;
     }
   </style>
 </head>
@@ -105,23 +225,23 @@
       <input type="hidden" id="editProductId">
       <div class="form-group">
         <label for="productName">Название товара</label>
-        <input type="text" id="productName" placeholder="Название товара" required>
+        <input type="text" id="productName" placeholder="Введите название товара" required>
       </div>
       <div class="form-group">
         <label for="productDescription">Описание</label>
-        <textarea id="productDescription" placeholder="Описание товара" required></textarea>
+        <textarea id="productDescription" placeholder="Введите описание товара" required></textarea>
       </div>
       <div class="form-group">
         <label for="productPrice">Цена</label>
-        <input type="number" id="productPrice" placeholder="Цена" step="0.01" min="0" required>
+        <input type="number" id="productPrice" placeholder="0.00" step="0.01" min="0" required>
       </div>
       <div class="form-group">
         <label for="productStock">Количество</label>
-        <input type="number" id="productStock" placeholder="Количество" min="0" required>
+        <input type="number" id="productStock" placeholder="0" min="0" required>
       </div>
       <div class="form-group">
         <label for="productImage">URL изображения</label>
-        <input type="text" id="productImage" placeholder="URL изображения">
+        <input type="text" id="productImage" placeholder="https://example.com/image.jpg">
       </div>
       <div class="form-group">
         <label for="productCategory">Категория</label>
@@ -129,15 +249,17 @@
           <option value="">Без категории</option>
         </select>
       </div>
-      <button class="btn-primary" id="saveProductBtn">Добавить товар</button>
-      <button class="btn-danger" id="cancelEditBtn" style="display: none;">Отмена</button>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="saveProductBtn">Добавить товар</button>
+        <button class="btn btn-danger" id="cancelEditBtn" style="display: none;">Отмена</button>
+      </div>
     </div>
 
     <div class="product-list">
       <h2>Список товаров</h2>
       <div class="form-group">
         <label for="productCategoryFilter">Фильтр по категории:</label>
-        <select id="productCategoryFilter">
+        <select id="productCategoryFilter" class="form-control">
           <option value="all">Все категории</option>
         </select>
       </div>
@@ -167,18 +289,20 @@
       <input type="hidden" id="editCategoryId">
       <div class="form-group">
         <label for="categoryName">Название категории</label>
-        <input type="text" id="categoryName" placeholder="Название категории" required>
+        <input type="text" id="categoryName" placeholder="Введите название категории" required>
       </div>
       <div class="form-group">
         <label for="categoryDescription">Описание</label>
-        <textarea id="categoryDescription" placeholder="Описание категории"></textarea>
+        <textarea id="categoryDescription" placeholder="Введите описание категории"></textarea>
       </div>
       <div class="form-group">
         <label for="categoryImage">URL изображения</label>
-        <input type="text" id="categoryImage" placeholder="URL изображения">
+        <input type="text" id="categoryImage" placeholder="https://example.com/category.jpg">
       </div>
-      <button class="btn-primary" id="saveCategoryBtn">Добавить категорию</button>
-      <button class="btn-danger" id="cancelEditCategoryBtn" style="display: none;">Отмена</button>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="saveCategoryBtn">Добавить категорию</button>
+        <button class="btn btn-danger" id="cancelEditCategoryBtn" style="display: none;">Отмена</button>
+      </div>
     </div>
 
     <div class="category-list">
@@ -240,6 +364,7 @@
       });
     } catch (error) {
       console.error('Ошибка загрузки категорий:', error);
+      showError('Не удалось загрузить категории');
     }
   }
 
@@ -251,13 +376,14 @@
               : '/api/products';
 
       const response = await fetch(url);
+      if (!response.ok) throw new Error('Ошибка сервера');
       const products = await response.json();
 
       const tbody = document.querySelector('#productsTable tbody');
       tbody.innerHTML = '';
 
       if (products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">Товары отсутствуют</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">Товары отсутствуют</td></tr>';
         return;
       }
 
@@ -266,13 +392,13 @@
         row.innerHTML = `
           <td>${product.id}</td>
           <td>${product.name}</td>
-          <td>${product.description}</td>
+          <td>${product.description || '-'}</td>
           <td>${product.price.toFixed(2)} ₽</td>
           <td>${product.stock}</td>
           <td>${getCategoryName(product.category_id)}</td>
           <td>
-            <button class="btn-edit" onclick="editProduct(${product.id})">Редактировать</button>
-            <button class="btn-danger" onclick="deleteProduct(${product.id})">Удалить</button>
+            <button class="btn btn-edit" onclick="editProduct(${product.id})">✏️</button>
+            <button class="btn btn-danger" onclick="deleteProduct(${product.id})">🗑️</button>
           </td>
         `;
         tbody.appendChild(row);
@@ -280,13 +406,13 @@
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);
       document.querySelector('#productsTable tbody').innerHTML =
-              '<tr><td colspan="7">Ошибка загрузки товаров</td></tr>';
+              '<tr><td colspan="7" class="error">Ошибка загрузки товаров</td></tr>';
     }
   }
 
   // Получение названия категории
   function getCategoryName(categoryId) {
-    if (!categoryId) return 'Без категории';
+    if (!categoryId) return '-';
     const select = document.getElementById('productCategory');
     const option = select.querySelector(`option[value="${categoryId}"]`);
     return option ? option.textContent : 'Неизвестно';
@@ -296,13 +422,14 @@
   async function loadCategories() {
     try {
       const response = await fetch('/api/categories');
+      if (!response.ok) throw new Error('Ошибка сервера');
       const categories = await response.json();
 
       const tbody = document.querySelector('#categoriesTable tbody');
       tbody.innerHTML = '';
 
       if (categories.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">Категории отсутствуют</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">Категории отсутствуют</td></tr>';
         return;
       }
 
@@ -311,10 +438,10 @@
         row.innerHTML = `
           <td>${category.id}</td>
           <td>${category.name}</td>
-          <td>${category.description || ''}</td>
+          <td>${category.description || '-'}</td>
           <td>
-            <button class="btn-edit" onclick="editCategory(${category.id})">Редактировать</button>
-            <button class="btn-danger" onclick="deleteCategory(${category.id})">Удалить</button>
+            <button class="btn btn-edit" onclick="editCategory(${category.id})">✏️</button>
+            <button class="btn btn-danger" onclick="deleteCategory(${category.id})">🗑️</button>
           </td>
         `;
         tbody.appendChild(row);
@@ -322,7 +449,7 @@
     } catch (error) {
       console.error('Ошибка загрузки категорий:', error);
       document.querySelector('#categoriesTable tbody').innerHTML =
-              '<tr><td colspan="4">Ошибка загрузки категорий</td></tr>';
+              '<tr><td colspan="4" class="error">Ошибка загрузки категорий</td></tr>';
     }
   }
 
@@ -335,29 +462,41 @@
   document.getElementById('saveProductBtn').addEventListener('click', async function() {
     const productId = document.getElementById('editProductId').value;
     const product = {
-      name: document.getElementById('productName').value,
-      description: document.getElementById('productDescription').value,
+      name: document.getElementById('productName').value.trim(),
+      description: document.getElementById('productDescription').value.trim(),
       price: parseFloat(document.getElementById('productPrice').value),
       stock: parseInt(document.getElementById('productStock').value),
-      image_url: document.getElementById('productImage').value || null,
+      image_url: document.getElementById('productImage').value.trim() || null,
       category_id: document.getElementById('productCategory').value || null
     };
+
+    // Валидация
+    if (!product.name || !product.description || isNaN(product.price) || isNaN(product.stock)) {
+      alert('Пожалуйста, заполните все обязательные поля корректно');
+      return;
+    }
 
     const url = productId ? `/api/products/${productId}` : '/api/products';
     const method = productId ? 'PUT' : 'POST';
 
     try {
-      await fetch(url, {
+      const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(product)
       });
 
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Ошибка сервера');
+      }
+
       resetProductForm();
       loadProducts(document.getElementById('productCategoryFilter').value);
+      showSuccess(productId ? 'Товар обновлен' : 'Товар добавлен');
     } catch (error) {
       console.error('Ошибка сохранения товара:', error);
-      alert('Ошибка сохранения товара');
+      showError(error.message || 'Ошибка сохранения товара');
     }
   });
 
@@ -380,11 +519,12 @@
   async function editProduct(id) {
     try {
       const response = await fetch(`/api/products/${id}`);
+      if (!response.ok) throw new Error('Ошибка сервера');
       const product = await response.json();
 
       document.getElementById('editProductId').value = product.id;
       document.getElementById('productName').value = product.name;
-      document.getElementById('productDescription').value = product.description;
+      document.getElementById('productDescription').value = product.description || '';
       document.getElementById('productPrice').value = product.price;
       document.getElementById('productStock').value = product.stock;
       document.getElementById('productImage').value = product.image_url || '';
@@ -393,7 +533,7 @@
       document.getElementById('cancelEditBtn').style.display = 'inline-block';
     } catch (error) {
       console.error('Ошибка загрузки товара:', error);
-      alert('Ошибка загрузки товара');
+      showError('Ошибка загрузки товара');
     }
   }
 
@@ -401,11 +541,16 @@
   async function deleteProduct(id) {
     if (confirm('Вы уверены, что хотите удалить этот товар?')) {
       try {
-        await fetch(`/api/products/${id}`, { method: 'DELETE' });
+        const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Ошибка сервера');
+        }
         loadProducts(document.getElementById('productCategoryFilter').value);
+        showSuccess('Товар удален');
       } catch (error) {
         console.error('Ошибка удаления товара:', error);
-        alert('Ошибка удаления товара');
+        showError(error.message || 'Ошибка удаления товара');
       }
     }
   }
@@ -414,27 +559,39 @@
   document.getElementById('saveCategoryBtn').addEventListener('click', async function() {
     const categoryId = document.getElementById('editCategoryId').value;
     const category = {
-      name: document.getElementById('categoryName').value,
-      description: document.getElementById('categoryDescription').value || null,
-      image_url: document.getElementById('categoryImage').value || null
+      name: document.getElementById('categoryName').value.trim(),
+      description: document.getElementById('categoryDescription').value.trim() || null,
+      image_url: document.getElementById('categoryImage').value.trim() || null
     };
+
+    // Валидация
+    if (!category.name) {
+      alert('Пожалуйста, укажите название категории');
+      return;
+    }
 
     const url = categoryId ? `/api/categories/${categoryId}` : '/api/categories';
     const method = categoryId ? 'PUT' : 'POST';
 
     try {
-      await fetch(url, {
+      const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(category)
       });
 
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Ошибка сервера');
+      }
+
       resetCategoryForm();
       loadCategories();
       loadCategoriesForSelect();
+      showSuccess(categoryId ? 'Категория обновлена' : 'Категория добавлена');
     } catch (error) {
       console.error('Ошибка сохранения категории:', error);
-      alert('Ошибка сохранения категории');
+      showError(error.message || 'Ошибка сохранения категории');
     }
   });
 
@@ -454,6 +611,7 @@
   async function editCategory(id) {
     try {
       const response = await fetch(`/api/categories/${id}`);
+      if (!response.ok) throw new Error('Ошибка сервера');
       const category = await response.json();
 
       document.getElementById('editCategoryId').value = category.id;
@@ -464,7 +622,7 @@
       document.getElementById('cancelEditCategoryBtn').style.display = 'inline-block';
     } catch (error) {
       console.error('Ошибка загрузки категории:', error);
-      alert('Ошибка загрузки категории');
+      showError('Ошибка загрузки категории');
     }
   }
 
@@ -473,19 +631,27 @@
     if (confirm('Вы уверены, что хотите удалить эту категорию?')) {
       try {
         const response = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-        const result = await response.json();
-
-        if (response.ok) {
-          loadCategories();
-          loadCategoriesForSelect();
-        } else {
-          alert(result.error || 'Нельзя удалить категорию с товарами');
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Ошибка сервера');
         }
+        loadCategories();
+        loadCategoriesForSelect();
+        showSuccess('Категория удалена');
       } catch (error) {
         console.error('Ошибка удаления категории:', error);
-        alert('Ошибка удаления категории');
+        showError(error.message || 'Нельзя удалить категорию с товарами');
       }
     }
+  }
+
+  // Вспомогательные функции
+  function showSuccess(message) {
+    alert(message); // Можно заменить на красивый toast-уведомление
+  }
+
+  function showError(message) {
+    alert(message); // Можно заменить на красивый toast-уведомление
   }
 
   // Инициализация

@@ -25,7 +25,7 @@ pub struct CreateProduct {
     pub stock: i32,
     #[serde(default)]
     pub image_url: Option<String>,
-    #[serde(default)]
+    #[serde(default)]  // Это позволяет пропускать поле в JSON
     pub category_id: Option<i64>,
 }
 
