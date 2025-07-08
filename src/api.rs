@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{get, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 
@@ -9,7 +9,7 @@ pub struct Product {
     pub name: String,
     pub description: String,
     pub price: f64,
-    pub stock: i32,
+    pub stock: i64,  // Изменено с i32 на i64
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -23,10 +23,10 @@ pub struct CreateProduct {
     pub name: String,
     pub description: String,
     pub price: f64,
-    pub stock: i32,
+    pub stock: i64,  // Изменено с i32 на i64
     #[serde(default)]
     pub image_url: Option<String>,
-    #[serde(default)]  // Это позволяет пропускать поле в JSON
+    #[serde(default)]
     pub category_id: Option<i64>,
 }
 
@@ -50,8 +50,9 @@ pub struct CreateCategory {
 }
 
 // Products handlers
-pub async fn list_products(pool: web::Data<sqlx::SqlitePool>) -> impl Responder {
-    match sqlx::query_as::<_, Product>(
+pub async fn list_products(pool: web::Data<SqlitePool>) -> impl Responder {
+    match sqlx::query_as!(
+        Product,
         r#"
         SELECT 
             id, 
@@ -61,7 +62,7 @@ pub async fn list_products(pool: web::Data<sqlx::SqlitePool>) -> impl Responder 
             stock, 
             image_url,
             category_id,
-            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at
+            strftime('%Y-%m-%d %H:%M:%S', created_at) as "created_at: String"
         FROM products
         "#
     )
@@ -76,13 +77,48 @@ pub async fn list_products(pool: web::Data<sqlx::SqlitePool>) -> impl Responder 
     }
 }
 
+#[get("/products/{id}")]
+pub async fn get_product(
+    pool: web::Data<SqlitePool>,
+    product_id: web::Path<i64>,
+) -> impl Responder {
+    let id = product_id.into_inner();
+
+    match sqlx::query_as!(
+        Product,
+        r#"
+        SELECT 
+            id, 
+            name,
+            description,
+            price, 
+            stock, 
+            image_url,
+            category_id,
+            strftime('%Y-%m-%d %H:%M:%S', created_at) as "created_at: String"
+        FROM products
+        WHERE id = ?
+        "#,
+        id
+    )
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(product) => HttpResponse::Ok().json(product),
+        Err(sqlx::Error::RowNotFound) => HttpResponse::NotFound().json("Product not found"),
+        Err(e) => {
+            eprintln!("Failed to fetch product: {}", e);
+            HttpResponse::InternalServerError().json("Failed to fetch product")
+        }
+    }
+}
+
 pub async fn create_product(
     pool: web::Data<SqlitePool>,
     product: web::Json<CreateProduct>,
 ) -> impl Responder {
     println!("Received product: {:?}", product);
 
-    // Проверяем существование категории, если она указана
     if let Some(category_id) = product.category_id {
         let category_exists: bool = match sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
@@ -112,7 +148,7 @@ pub async fn create_product(
         .bind(&product.name)
         .bind(&product.description)
         .bind(product.price)
-        .bind(product.stock)
+        .bind(product.stock)  // Теперь без приведения типа
         .bind(&product.image_url)
         .bind(product.category_id)
         .execute(&**pool)
@@ -127,11 +163,13 @@ pub async fn create_product(
 }
 
 pub async fn delete_product(
-    pool: web::Data<sqlx::SqlitePool>,
+    pool: web::Data<SqlitePool>,
     product_id: web::Path<i64>,
 ) -> impl Responder {
+    let id = product_id.into_inner();
+
     match sqlx::query("DELETE FROM products WHERE id = ?")
-        .bind(*product_id)
+        .bind(id)
         .execute(&**pool)
         .await
     {
@@ -144,10 +182,13 @@ pub async fn delete_product(
 }
 
 pub async fn get_products_by_category(
-    pool: web::Data<sqlx::SqlitePool>,
+    pool: web::Data<SqlitePool>,
     category_id: web::Path<i64>,
 ) -> impl Responder {
-    match sqlx::query_as::<_, Product>(
+    let cat_id = category_id.into_inner();
+
+    match sqlx::query_as!(
+        Product,
         r#"
         SELECT 
             id, 
@@ -157,12 +198,12 @@ pub async fn get_products_by_category(
             stock, 
             image_url,
             category_id,
-            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at
+            strftime('%Y-%m-%d %H:%M:%S', created_at) as "created_at: String"
         FROM products
         WHERE category_id = ?
-        "#
+        "#,
+        cat_id
     )
-        .bind(*category_id)
         .fetch_all(&**pool)
         .await
     {
@@ -175,8 +216,11 @@ pub async fn get_products_by_category(
 }
 
 // Categories handlers
-pub async fn list_categories(pool: web::Data<sqlx::SqlitePool>) -> impl Responder {
-    match sqlx::query_as::<_, Category>("SELECT * FROM categories")
+pub async fn list_categories(pool: web::Data<SqlitePool>) -> impl Responder {
+    match sqlx::query_as!(
+        Category,
+        "SELECT id, name, description, image_url FROM categories"
+    )
         .fetch_all(&**pool)
         .await
     {
@@ -189,7 +233,7 @@ pub async fn list_categories(pool: web::Data<sqlx::SqlitePool>) -> impl Responde
 }
 
 pub async fn create_category(
-    pool: web::Data<sqlx::SqlitePool>,
+    pool: web::Data<SqlitePool>,
     category: web::Json<CreateCategory>,
 ) -> impl Responder {
     match sqlx::query(
@@ -210,14 +254,15 @@ pub async fn create_category(
 }
 
 pub async fn delete_category(
-    pool: web::Data<sqlx::SqlitePool>,
+    pool: web::Data<SqlitePool>,
     category_id: web::Path<i64>,
 ) -> impl Responder {
-    // Check if category has products
+    let id = category_id.into_inner();
+
     match sqlx::query_scalar::<_, i64>(
         "SELECT COUNT(*) FROM products WHERE category_id = ?"
     )
-        .bind(*category_id)
+        .bind(id)
         .fetch_one(&**pool)
         .await
     {
@@ -226,7 +271,7 @@ pub async fn delete_category(
         },
         Ok(_) => {
             match sqlx::query("DELETE FROM categories WHERE id = ?")
-                .bind(*category_id)
+                .bind(id)
                 .execute(&**pool)
                 .await
             {
@@ -248,13 +293,49 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
             // Products routes
+            .service(get_product)
             .route("/products", web::get().to(list_products))
             .route("/products", web::post().to(create_product))
             .route("/products/{id}", web::delete().to(delete_product))
+            .route("/categories/{id}/products", web::get().to(get_products_by_category))
             // Categories routes
             .route("/categories", web::get().to(list_categories))
             .route("/categories", web::post().to(create_category))
-            .route("/categories/{id}", web::delete().to(delete_category))
-            .route("/categories/{id}/products", web::get().to(get_products_by_category)),
+            .route("/categories/{id}", web::delete().to(delete_category)),
     );
+}
+// Добавляем в api.rs
+#[derive(Debug, Serialize, FromRow)]
+pub struct CartItem {
+    pub id: i64,
+    pub product_id: i64,
+    pub quantity: i32,
+    pub user_id: Option<i64>, // Для будущей аутентификации
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AddToCartRequest {
+    pub product_id: i64,
+    pub quantity: i32,
+}
+
+#[post("/cart/add")]
+pub async fn add_to_cart(
+    pool: web::Data<SqlitePool>,
+    item: web::Json<AddToCartRequest>,
+) -> impl Responder {
+    match sqlx::query(
+        "INSERT INTO cart (product_id, quantity) VALUES (?, ?)"
+    )
+        .bind(item.product_id)
+        .bind(item.quantity)
+        .execute(&**pool)
+        .await
+    {
+        Ok(_) => HttpResponse::Created().json("Item added to cart"),
+        Err(e) => {
+            eprintln!("Failed to add to cart: {}", e);
+            HttpResponse::InternalServerError().json("Failed to add to cart")
+        }
+    }
 }

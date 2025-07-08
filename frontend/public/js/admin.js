@@ -1,3 +1,4 @@
+let currentProductId = null;
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     loadCategoriesForSelect();
@@ -371,3 +372,203 @@ function getCategoryName(categoryId) {
     const option = select.querySelector(`option[value="${categoryId}"]`);
     return option ? option.textContent : 'Неизвестно';
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик клика на товар
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            window.location.href = `/product.html?id=${productId}`;
+        });
+    });
+
+    // Если это страница товара - загружаем данные
+    if (window.location.pathname.includes('/product.html')) {
+        loadProductData();
+    }
+});
+
+async function loadProductData() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+
+    if (!productId) {
+        window.location.href = '/';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/product/${productId}`);
+        if (!response.ok) throw new Error('Product not found');
+
+        const product = await response.json();
+        renderProductPage(product);
+    } catch (error) {
+        console.error('Error loading product:', error);
+        window.location.href = '/';
+    }
+}
+
+function renderProductPage(product) {
+    document.getElementById('product-name').textContent = product.name;
+    document.getElementById('product-price').textContent = `$${product.price.toFixed(2)}`;
+    document.getElementById('product-description').textContent = product.description;
+    document.getElementById('product-stock').textContent = `In stock: ${product.stock}`;
+
+    const imageContainer = document.getElementById('product-image');
+    if (product.image_url) {
+        imageContainer.innerHTML = `<img src="${product.image_url}" alt="${product.name}" class="product-image">`;
+    } else {
+        imageContainer.innerHTML = '<div class="no-image">No image available</div>';
+    }
+
+    // Кнопка "Add to cart"
+    document.getElementById('add-to-cart').addEventListener('click', () => {
+        addToCart(product.id);
+    });
+}
+
+async function addToCart(productId) {
+    try {
+        const response = await fetch('/api/cart/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ product_id: productId, quantity: 1 })
+        });
+
+        if (response.ok) {
+            alert('Product added to cart!');
+        } else {
+            throw new Error('Failed to add to cart');
+        }
+    } catch (error) {
+        console.error('Error adding to cart:', error);
+        alert('Error adding product to cart');
+    }
+}
+// Добавляем в конец файла admin.js (перед последней закрывающей скобкой)
+
+// ========== ФУНКЦИИ ДЛЯ ПОЛЬЗОВАТЕЛЬСКОГО ИНТЕРФЕЙСА ==========
+
+async function showProductDetail(productId) {
+    try {
+        currentProductId = productId;
+        const response = await fetch(`/api/products/${productId}`);
+        if (!response.ok) throw new Error('Ошибка загрузки товара');
+
+        const product = await response.json();
+        renderProductModal(product);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Не удалось загрузить товар');
+    }
+}
+// Рендер модального окна
+function renderProductModal(product) {
+    const modalHTML = `
+        <div class="product-modal" id="productModal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <div class="product-image">
+                    ${product.image_url ?
+        `<img src="${product.image_url}" alt="${product.name}">` :
+        '<div class="no-image">Нет изображения</div>'}
+                </div>
+                <h2>${product.name}</h2>
+                <p class="price">${product.price.toFixed(2)} ₽</p>
+                <p class="description">${product.description || 'Нет описания'}</p>
+                <button class="btn-cart" id="addToCartBtn">В корзину</button>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Обработчики событий
+    document.getElementById('addToCartBtn').addEventListener('click', addToCart);
+    document.querySelector('.close-modal').addEventListener('click', closeModal);
+    document.getElementById('productModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('productModal')) {
+            closeModal();
+        }
+    });
+}
+// Обновленная функция добавления в корзину
+
+// Функция добавления в корзину
+async function addToCart() {
+    try {
+        const response = await fetch('/api/cart/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: currentProductId,
+                quantity: 1
+            })
+        });
+
+        if (!response.ok) throw new Error('Ошибка сервера');
+
+        alert('Товар добавлен в корзину!');
+        closeModal();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Ошибка при добавлении в корзину');
+    }
+}
+
+// Инициализация обработчиков для карточек товаров
+function initProductCards() {
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            // Проверяем, был ли клик по кнопке "В корзину" или её дочерним элементам
+            if (!e.target.closest('.btn-cart')) {
+                const productId = this.dataset.productId;
+                showProductDetail(productId);
+            }
+        });
+    });
+}
+
+// Обновляем функцию displayProducts (если она у вас есть)
+function displayProducts(products) {
+    const container = document.getElementById('productsContainer');
+
+    if (products.length === 0) {
+        container.innerHTML = '<div class="empty">Товары отсутствуют</div>';
+        return;
+    }
+
+    container.innerHTML = products.map(product => `
+        <div class="product-card" data-product-id="${product.id}">
+            <div class="product-image">
+                ${product.image_url ?
+        `<img src="${product.image_url}" alt="${product.name}" loading="lazy">` :
+        '<div class="no-image">Нет изображения</div>'}
+            </div>
+            <div class="product-info">
+                <h3>${product.name}</h3>
+                <div class="product-price">${product.price.toFixed(2)} ₽</div>
+                <div class="product-stock">Остаток: ${product.stock} шт.</div>
+                <button class="btn-cart" onclick="addToCart(${product.id}, event)">В корзину</button>
+            </div>
+        </div>
+    `).join('');
+
+    // Инициализируем обработчики для новых карточек
+    initProductCards();
+}
+
+// Обновляем обработчик DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategoriesForSelect();
+    loadProducts();
+    loadCategories();
+    initProductCards(); // Добавляем инициализацию карточек
+
+    // Остальные обработчики...
+});
