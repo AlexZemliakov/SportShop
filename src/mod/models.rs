@@ -16,10 +16,11 @@ pub struct Product {
     pub name: String,
     pub description: String,
     pub price: f64,
-    pub stock: i32,  // Было quantity, измените на stock
+    pub stock: i64,  // Изменено с i32
     pub image_url: Option<String>,
     pub category_id: Option<i64>,
 }
+
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,7 +100,7 @@ pub struct OrderItemCreate {
 pub struct CartItem {
     pub id: i64,
     pub product_id: i64,
-    pub quantity: i32,
+    pub quantity: i64,  // Изменено с i32
     pub user_id: Option<i64>,
 }
 
