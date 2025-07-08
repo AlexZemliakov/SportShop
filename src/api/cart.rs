@@ -7,8 +7,8 @@ use crate::models::CartItem;
 pub struct AddToCartRequest {
     pub product_id: i64,
     pub quantity: i64,
+    pub user_id: Option<i64>,
 }
-
 
 #[post("/add")]
 pub async fn add_to_cart(
@@ -42,13 +42,6 @@ pub async fn get_cart_items(pool: web::Data<SqlitePool>) -> impl Responder {
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/cart")
-            .service(add_to_cart)
-            .service(get_cart_items)
-    );
-}
-pub fn cart_config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/cart")
             .service(add_to_cart)
