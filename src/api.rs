@@ -10,7 +10,7 @@ pub struct Product {
     pub name: String,
     pub description: String,
     pub price: f64,
-    pub stock: i64,  // Изменено с i32 на i64
+    pub stock: i64,  // Изменено на i64 для согласованности
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,14 +24,14 @@ pub struct CreateProduct {
     pub name: String,
     pub description: String,
     pub price: f64,
-    pub stock: i64,  // Изменено с i32 на i64
+    pub stock: i64,  // Изменено на i64
     #[serde(default)]
     pub image_url: Option<String>,
     #[serde(default)]
     pub category_id: Option<i64>,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, FromRow)]
 pub struct Category {
     pub id: i64,
     pub name: String,
@@ -55,12 +55,12 @@ pub async fn list_products(pool: web::Data<SqlitePool>) -> impl Responder {
     match sqlx::query_as!(
         Product,
         r#"
-        SELECT 
-            id, 
+        SELECT
+            id,
             name,
             description,
-            price, 
-            stock, 
+            price,
+            stock,
             image_url,
             category_id,
             strftime('%Y-%m-%d %H:%M:%S', created_at) as "created_at: String"
@@ -88,12 +88,12 @@ pub async fn get_product(
     match sqlx::query_as!(
         Product,
         r#"
-        SELECT 
-            id, 
+        SELECT
+            id,
             name,
             description,
-            price, 
-            stock, 
+            price,
+            stock,
             image_url,
             category_id,
             strftime('%Y-%m-%d %H:%M:%S', created_at) as "created_at: String"
@@ -191,12 +191,12 @@ pub async fn get_products_by_category(
     match sqlx::query_as!(
         Product,
         r#"
-        SELECT 
-            id, 
+        SELECT
+            id,
             name,
             description,
-            price, 
-            stock, 
+            price,
+            stock,
             image_url,
             category_id,
             strftime('%Y-%m-%d %H:%M:%S', created_at) as "created_at: String"
@@ -295,15 +295,16 @@ pub async fn delete_category(
 pub struct CartItem {
     pub id: i64,
     pub product_id: i64,
-    pub quantity: i32,
+    pub quantity: i64,  // Изменено на i64
     pub user_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AddToCartRequest {
     pub product_id: i64,
-    pub quantity: i32,
+    pub quantity: i64,  // Изменено на i64
 }
+
 
 #[post("/cart/add")]
 pub async fn add_to_cart(
@@ -312,22 +313,14 @@ pub async fn add_to_cart(
 ) -> impl Responder {
     match sqlx::query_as!(
         CartItem,
-        r#"
-        INSERT INTO cart (product_id, quantity)
-        VALUES ($1, $2)
-        RETURNING id, product_id, quantity, user_id
-        "#,
+        "INSERT INTO cart (product_id, quantity) VALUES ($1, $2) RETURNING *",
         item.product_id,
         item.quantity
     )
         .fetch_one(&**pool)
-        .await
-    {
-        Ok(cart_item) => HttpResponse::Created().json(cart_item),
-        Err(e) => {
-            eprintln!("Failed to add to cart: {}", e);
-            HttpResponse::InternalServerError().json("Failed to add to cart")
-        }
+        .await {
+        Ok(item) => HttpResponse::Ok().json(item),
+        Err(e) => HttpResponse::InternalServerError().json(e.to_string()),
     }
 }
 
@@ -358,7 +351,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
             // Products routes
-            .service(get_product)
+            .service(web::resource("/products/{id}").route(web::get().to(get_product)))
             .route("/products", web::get().to(list_products))
             .route("/products", web::post().to(create_product))
             .route("/products/{id}", web::delete().to(delete_product))
@@ -368,13 +361,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/categories", web::post().to(create_category))
             .route("/categories/{id}", web::delete().to(delete_category))
             // Cart routes
-            .service(
-                web::resource("/cart/add")
-                    .route(web::post().to(add_to_cart))
-            )
-            .service(
-                web::resource("/cart/items")
-                    .route(web::get().to(get_cart_items))
-            )
+            .service(web::resource("/cart/add").route(web::post().to(add_to_cart)))
+            .service(web::resource("/cart/items").route(web::get().to(get_cart_items))),
     );
 }

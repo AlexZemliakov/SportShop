@@ -35,6 +35,7 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
+            
             .wrap(cors)
             .app_data(web::JsonConfig::default().error_handler(|err, _req| {
                 actix_web::error::InternalError::from_response(
