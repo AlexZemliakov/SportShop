@@ -98,10 +98,9 @@ pub struct OrderItemCreate {
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct CartItem {
     pub id: i64,
-    pub user_id: i64,
     pub product_id: i64,
     pub quantity: i32,
-    pub created_at: NaiveDateTime,
+    pub user_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,6 +1,7 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
+
 
 #[derive(Debug, Serialize, FromRow)]
 #[allow(dead_code)]
@@ -289,28 +290,13 @@ pub async fn delete_category(
     }
 }
 
-pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api")
-            // Products routes
-            .service(get_product)
-            .route("/products", web::get().to(list_products))
-            .route("/products", web::post().to(create_product))
-            .route("/products/{id}", web::delete().to(delete_product))
-            .route("/categories/{id}/products", web::get().to(get_products_by_category))
-            // Categories routes
-            .route("/categories", web::get().to(list_categories))
-            .route("/categories", web::post().to(create_category))
-            .route("/categories/{id}", web::delete().to(delete_category)),
-    );
-}
 // Добавляем в api.rs
 #[derive(Debug, Serialize, FromRow)]
 pub struct CartItem {
     pub id: i64,
     pub product_id: i64,
     pub quantity: i32,
-    pub user_id: Option<i64>, // Для будущей аутентификации
+    pub user_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -324,18 +310,71 @@ pub async fn add_to_cart(
     pool: web::Data<SqlitePool>,
     item: web::Json<AddToCartRequest>,
 ) -> impl Responder {
-    match sqlx::query(
-        "INSERT INTO cart (product_id, quantity) VALUES (?, ?)"
+    match sqlx::query_as!(
+        CartItem,
+        r#"
+        INSERT INTO cart (product_id, quantity)
+        VALUES ($1, $2)
+        RETURNING id, product_id, quantity, user_id
+        "#,
+        item.product_id,
+        item.quantity
     )
-        .bind(item.product_id)
-        .bind(item.quantity)
-        .execute(&**pool)
+        .fetch_one(&**pool)
         .await
     {
-        Ok(_) => HttpResponse::Created().json("Item added to cart"),
+        Ok(cart_item) => HttpResponse::Created().json(cart_item),
         Err(e) => {
             eprintln!("Failed to add to cart: {}", e);
             HttpResponse::InternalServerError().json("Failed to add to cart")
         }
     }
+}
+
+
+#[get("/cart/items")]
+pub async fn get_cart_items(
+    pool: web::Data<SqlitePool>
+) -> impl Responder {
+    match sqlx::query_as!(
+        CartItem,
+        r#"
+        SELECT id, product_id, quantity, user_id
+        FROM cart
+        "#
+    )
+        .fetch_all(&**pool)
+        .await
+    {
+        Ok(items) => HttpResponse::Ok().json(items),
+        Err(e) => {
+            eprintln!("Failed to fetch cart items: {}", e);
+            HttpResponse::InternalServerError().json("Failed to fetch cart items")
+        }
+    }
+}
+
+pub fn config(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/api")
+            // Products routes
+            .service(get_product)
+            .route("/products", web::get().to(list_products))
+            .route("/products", web::post().to(create_product))
+            .route("/products/{id}", web::delete().to(delete_product))
+            .route("/categories/{id}/products", web::get().to(get_products_by_category))
+            // Categories routes
+            .route("/categories", web::get().to(list_categories))
+            .route("/categories", web::post().to(create_category))
+            .route("/categories/{id}", web::delete().to(delete_category))
+            // Cart routes
+            .service(
+                web::resource("/cart/add")
+                    .route(web::post().to(add_to_cart))
+            )
+            .service(
+                web::resource("/cart/items")
+                    .route(web::get().to(get_cart_items))
+            )
+    );
 }

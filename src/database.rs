@@ -9,7 +9,7 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     let pool = SqlitePool::connect(&database_url).await?;
 
     // Проверяем существование таблиц
-    if let Err(e) = sqlx::query("SELECT 1 FROM sqlite_master LIMIT 1")
+    if let Err(_e) = sqlx::query("SELECT 1 FROM sqlite_master LIMIT 1")
         .execute(&pool)
         .await
     {
