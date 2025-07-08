@@ -1,4 +1,3 @@
-// main.rs
 use actix_web::{web, App, HttpServer};
 use actix_files::Files;
 use actix_cors::Cors;
@@ -6,7 +5,7 @@ use std::path::Path;
 
 mod api;
 mod models;
-mod database;
+mod services;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -16,7 +15,7 @@ async fn main() -> std::io::Result<()> {
         .canonicalize()
         .expect("Failed to resolve public directory");
 
-    let pool = database::init_db().await
+    let pool = crate::services::database::init_db().await
         .expect("Failed to initialize database");
 
     HttpServer::new(move || {
@@ -27,10 +26,9 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials();
 
         App::new()
-            
             .wrap(cors)
             .app_data(web::Data::new(pool.clone()))
-            .configure(api::config)
+            .configure(crate::api::config)
             .service(
                 Files::new("/", &public_dir)
                     .index_file("index.html")
