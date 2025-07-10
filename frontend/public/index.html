@@ -91,20 +91,20 @@
         }
 
         container.innerHTML = products.map(product => `
-        <div class="product-card" data-product-id="${product.id}">
-            <div class="product-image">
-                ${product.image_url ?
-                    `<img src="${product.image_url}" alt="${product.name}">` :
-                    '<div class="no-image">Нет изображения</div>'}
+            <div class="product-card" onclick="showProductDetail(${product.id})">
+                <div class="product-image">
+                    ${product.image_url ?
+            `<img src="${product.image_url}" alt="${product.name}" loading="lazy">` :
+            '<div class="no-image">Нет изображения</div>'}
+                </div>
+                <div class="product-info">
+                    <h3>${product.name}</h3>
+                    <div class="product-price">${product.price.toFixed(2)} ₽</div>
+                    <div class="product-stock">Остаток: ${product.stock} шт.</div>
+                    <button class="btn-cart">В корзину</button>
+                </div>
             </div>
-            <div class="product-info">
-                <h3>${product.name}</h3>
-                <div class="product-price">${product.price.toFixed(2)} ₽</div>
-                <button class="btn-cart">В корзину</button>
-            </div>
-        </div>
-        </div>
-    `).join('');
+        `).join('');
     }
 
     // Загрузка категорий
@@ -136,31 +136,31 @@
     async function showProductDetail(productId) {
         try {
             const response = await fetch(`/api/products/${productId}`);
-            if (!response.ok) throw new Error('Product not found');
             const product = await response.json();
 
-            // Создаем модальное окно для показа товара
-            const modal = document.createElement('div');
-            modal.className = 'product-modal';
-            modal.innerHTML = `
-            <div class="modal-content">
-                <span class="close" onclick="this.parentElement.parentElement.remove()">&times;</span>
-                <div class="product-image">
-                    ${product.image_url ?
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = `
+                <div class="product-detail">
+                    <button class="btn-primary" onclick="loadAllProducts()">← Назад к товарам</button>
+                    <div class="product-image">
+                        ${product.image_url ?
                 `<img src="${product.image_url}" alt="${product.name}">` :
-                '<div class="no-image">No image</div>'}
+                '<div class="no-image">Нет изображения</div>'}
+                    </div>
+                    <h2>${product.name}</h2>
+                    <div class="product-price">${product.price.toFixed(2)} ₽</div>
+                    <div class="product-description">
+                        <h3>Описание:</h3>
+                        <p>${product.description || 'Нет описания'}</p>
+                    </div>
+                    <div class="product-stock">Остаток: ${product.stock} шт.</div>
+                    <button class="btn-cart">Добавить в корзину</button>
                 </div>
-                <h2>${product.name}</h2>
-                <p class="price">${product.price.toFixed(2)} ₽</p>
-                <p class="description">${product.description}</p>
-                <p class="stock">Остаток: ${product.stock} шт.</p>
-                <button onclick="addToCart(${product.id})">В корзину</button>
-            </div>
-        `;
-            document.body.appendChild(modal);
+            `;
         } catch (error) {
-            console.error('Error:', error);
-            alert('Не удалось загрузить товар');
+            console.error('Ошибка загрузки товара:', error);
+            document.getElementById('productsContainer').innerHTML =
+                '<div class="error">Ошибка загрузки товара</div>';
         }
     }
 </script>
