@@ -447,3 +447,13 @@ async function addToCart(productId) {
         alert('Error adding product to cart');
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик клика на продукт
+    document.querySelectorAll('.product').forEach(product => {
+        product.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            window.location.href = `/product.html?id=${productId}`;
+        });
+    });
+});

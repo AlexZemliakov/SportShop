@@ -3,41 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SportShop - Product</title>
+    <title>Product Details</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-<header>
-    <div class="container">
-        <h1>SportShop</h1>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/cart.html">Cart</a>
-        </nav>
+<div class="container">
+    <div id="product-details">
+        <h1 id="product-name"></h1>
+        <img id="product-image" src="" alt="">
+        <p id="product-price"></p>
+        <p id="product-stock"></p>
+        <p id="product-description"></p>
+        <button id="add-to-cart">В корзину</button>
     </div>
-</header>
-
-<main class="container product-container">
-    <div class="product-image-container" id="product-image">
-        <!-- Image will be loaded by JS -->
-    </div>
-
-    <div class="product-details">
-        <h2 id="product-name">Loading...</h2>
-        <p class="price" id="product-price">$0.00</p>
-        <p class="stock" id="product-stock">In stock: 0</p>
-        <p class="description" id="product-description">Loading description...</p>
-
-        <button id="add-to-cart" class="btn-primary">Add to Cart</button>
-    </div>
-</main>
-
-<footer>
-    <div class="container">
-        <p>&copy; 2023 SportShop. All rights reserved.</p>
-    </div>
-</footer>
-
-<script src="/js/admin.js"></script>
+</div>
+<script src="/js/product.js"></script>
 </body>
 </html>

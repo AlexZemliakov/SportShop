@@ -210,11 +210,13 @@ tr:hover {
 }
 
 .product-image {
-    height: 200px;
+    height: auto;
     background-color: var(--bg-darker);
     display: flex;
     align-items: center;
     justify-content: center;
+    max-width: 100%;
+    margin: 20px 0;
 }
 
 .product-image img {
@@ -410,8 +412,10 @@ tr:hover {
     object-fit: contain;
 }
 
-.product-details {
-    flex: 1;
+#product-details {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
 }
 
 .product-details .price {
@@ -440,4 +444,8 @@ tr:hover {
     .product-container {
         flex-direction: column;
     }
+}
+
+.product {
+    cursor: pointer;
 }

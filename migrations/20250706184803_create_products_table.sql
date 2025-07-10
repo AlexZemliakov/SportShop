@@ -7,4 +7,5 @@ CREATE TABLE products (
                           image_url TEXT,
                           category_id INTEGER REFERENCES categories(id),
                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
 );

@@ -10,15 +10,15 @@ pub struct Category {
     pub image_url: Option<String>,
 }
 
-#[derive(Debug, FromRow, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Product {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
-    pub description: String,
     pub price: f64,
-    pub stock: i32,  // Было quantity, измените на stock
-    pub image_url: Option<String>,
-    pub category_id: Option<i64>,
+    pub stock: i32,
+    pub description: String, // Добавьте это поле
+    pub image_url: String,
+    pub category_id: i32,
 }
 
 
