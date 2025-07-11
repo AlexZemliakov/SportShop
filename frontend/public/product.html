@@ -1,22 +1,79 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Details</title>
+    <title>Детали товара - SportShop</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-<div class="container">
-    <div id="product-details">
-        <h1 id="product-name"></h1>
-        <img id="product-image" src="" alt="">
-        <p id="product-price"></p>
-        <p id="product-stock"></p>
-        <p id="product-description"></p>
-        <button id="add-to-cart">В корзину</button>
-    </div>
+<div class="main-container">
+    <header class="main-header">
+        <h1>SportShop</h1>
+        <p>Лучший протеин только у нас</p>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="/admin">Админ-панель</a>
+        </nav>
+    </header>
+
+    <main class="product-detail-container">
+        <div id="productDetail">
+            <div class="loading">Загрузка товара...</div>
+        </div>
+    </main>
+
+    <footer class="main-footer">
+        <p>© SportShop - быстро, надежно, качественно.</p>
+    </footer>
 </div>
-<script src="/js/product.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProductDetail();
+    });
+
+    async function loadProductDetail() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+
+        if (!productId) {
+            document.getElementById('productDetail').innerHTML =
+                '<div class="error">Товар не найден</div>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/product/${productId}`);
+            if (!response.ok) throw new Error('Ошибка загрузки товара');
+            const product = await response.json();
+
+            document.getElementById('productDetail').innerHTML = `
+                <a href="/" class="btn-back">← Назад к товарам</a>
+                <div class="product-detail">
+                    <div class="product-image">
+                        ${product.image_url ?
+                `<img src="${product.image_url}" alt="${product.name}">` :
+                '<div class="no-image">Нет изображения</div>'}
+                    </div>
+                    <div class="product-info">
+                        <h2>${product.name}</h2>
+                        <div class="product-price">${product.price.toFixed(2)} ₽</div>
+                        <div class="product-stock">Остаток: ${product.stock} шт.</div>
+                        <div class="product-description">
+                            <h3>Описание:</h3>
+                            <p>${product.description || 'Нет описания'}</p>
+                        </div>
+                        <button class="btn-cart">Добавить в корзину</button>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            console.error('Ошибка загрузки товара:', error);
+            document.getElementById('productDetail').innerHTML =
+                '<div class="error">Ошибка загрузки товара</div>';
+        }
+    }
+</script>
 </body>
 </html>

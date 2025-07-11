@@ -10,6 +10,11 @@
     --danger-hover: #f44336;
     --success-color: #388e3c;
     --border-color: #333333;
+
+
+    /* Новые цвета для светлых элементов */
+    --light-bg: #f5f5f5;
+    --light-text: #000000;
 }
 
 * {
@@ -448,4 +453,76 @@ tr:hover {
 
 .product {
     cursor: pointer;
+}
+
+/* Стили для страницы деталей товара */
+.product-detail-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.product-detail {
+    display: flex;
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.product-detail .product-image {
+    flex: 1;
+    max-width: 500px;
+}
+
+.product-detail .product-image img {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.product-detail .product-info {
+    flex: 1;
+}
+
+.product-detail .product-description {
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--light-bg);
+    border-radius: 8px;
+    color: var(--light-text);
+}
+
+.product-detail .product-description h3 {
+    color: var(--light-text);
+    margin-bottom: 10px;
+}
+.product-detail .product-description p {
+    color: var(--light-text);
+    line-height: 1.6;
+}
+
+.btn-back {
+    display: inline-block;
+    padding: 8px 16px;
+    background: var(--success-color); /* Используем зеленый цвет из переменных */
+    color: white !important; /* Белый текст для контраста */
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    transition: background-color 0.3s;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-back:hover {
+    background: #2e7d32; /* Темно-зеленый при наведении */
+}
+
+@media (max-width: 768px) {
+    .product-detail {
+        flex-direction: column;
+    }
+
+    .product-detail .product-image {
+        max-width: 100%;
+    }
 }
