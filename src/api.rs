@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use actix_web::{get, post, web, HttpResponse, Responder, delete, put};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
@@ -427,66 +428,12 @@ pub async fn get_cart(
     }
 }
 
-#[delete("/cart/{id}")]
-pub async fn remove_from_cart(
-    pool: web::Data<SqlitePool>,
-    item_id: web::Path<i64>,
-    session: Session,
-) -> impl Responder {
-    let session_id = match session.get::<String>("session_id") {
-        Ok(Some(id)) => id,
-        _ => return HttpResponse::Unauthorized().json("Session required"),
-    };
-
-    match sqlx::query(
-        "DELETE FROM cart WHERE id = ? AND session_id = ?"
-    )
-        .bind(item_id.into_inner())
-        .bind(&session_id)
-        .execute(&**pool)
-        .await
-    {
-        Ok(result) if result.rows_affected() > 0 => HttpResponse::NoContent().finish(),
-        Ok(_) => HttpResponse::NotFound().json("Item not found in your cart"),
-        Err(e) => {
-            eprintln!("Failed to remove from cart: {}", e);
-            HttpResponse::InternalServerError().json("Failed to remove from cart")
-        }
-    }
-}
-
-#[get("/cart/count")]
-pub async fn get_cart_count(
-    pool: web::Data<SqlitePool>,
-    session: Session,
-) -> impl Responder {
-    let session_id = match session.get::<String>("session_id") {
-        Ok(Some(id)) => id,
-        _ => return HttpResponse::Ok().json(0),
-    };
-
-    match sqlx::query_scalar::<_, Option<i64>>(
-        "SELECT SUM(quantity) FROM cart WHERE session_id = ?"
-    )
-        .bind(&session_id)
-        .fetch_one(&**pool)
-        .await
-    {
-        Ok(Some(count)) => HttpResponse::Ok().json(count),
-        Ok(None) => HttpResponse::Ok().json(0),  // Если SUM вернул NULL (корзина пуста)
-        Err(e) => {
-            eprintln!("Failed to get cart count: {}", e);
-            HttpResponse::InternalServerError().json("Failed to get cart count")
-        }
-    }
-}
-////////////////////////////////////////////
 // Обновление количества товара в корзине
 #[put("/cart/{id}")]
 pub async fn update_cart_item(
     pool: web::Data<SqlitePool>,
     item_id: web::Path<i64>,
-    quantity: web::Json<i32>,
+    quantity: web::Json<HashMap<String, i32>>,  // Изменили тип параметра
     session: Session,
 ) -> impl Responder {
     let session_id = match session.get::<String>("session_id") {
@@ -494,8 +441,8 @@ pub async fn update_cart_item(
         _ => return HttpResponse::Unauthorized().json("Session required"),
     };
 
-    // Проверяем, что количество не отрицательное
-    let new_quantity = quantity.into_inner().max(1);
+    // Получаем quantity из JSON
+    let new_quantity = quantity.get("quantity").cloned().unwrap_or(1);
 
     match sqlx::query(
         "UPDATE cart SET quantity = ? WHERE id = ? AND session_id = ?"
@@ -505,7 +452,7 @@ pub async fn update_cart_item(
         .bind(session_id)
         .execute(&**pool)
         .await {
-        Ok(result) if result.rows_affected() > 0 => HttpResponse::Ok().json(new_quantity),
+        Ok(result) if result.rows_affected() > 0 => HttpResponse::Ok().json("Quantity updated"),
         Ok(_) => HttpResponse::NotFound().json("Item not found"),
         Err(e) => HttpResponse::InternalServerError().json(format!("Error: {}", e))
     }
@@ -535,10 +482,38 @@ pub async fn remove_cart_item(
         Err(e) => HttpResponse::InternalServerError().json(format!("Error: {}", e))
     }
 }
+
+
+#[get("/cart/count")]
+pub async fn get_cart_count(
+    pool: web::Data<SqlitePool>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => return HttpResponse::Ok().json(0),
+    };
+
+    match sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT SUM(quantity) FROM cart WHERE session_id = ?"
+    )
+        .bind(&session_id)
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(Some(count)) => HttpResponse::Ok().json(count),
+        Ok(None) => HttpResponse::Ok().json(0),  // Если SUM вернул NULL (корзина пуста)
+        Err(e) => {
+            eprintln!("Failed to get cart count: {}", e);
+            HttpResponse::InternalServerError().json("Failed to get cart count")
+        }
+    }
+}
 ////////////////////////////////////////////
+// Обновление количества товара в корзин
 
 
-
+// Конфигурация маршрутов
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
@@ -555,7 +530,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             // Cart routes
             .service(add_to_cart)
             .service(get_cart)
-            .service(remove_from_cart)
-            .service(get_cart_count),
+            .service(remove_cart_item)  // Исправлено с remove_from_cart на remove_cart_item
+            .service(get_cart_count)
+            .service(update_cart_item)
     );
 }

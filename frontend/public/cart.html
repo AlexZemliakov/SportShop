@@ -5,6 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Корзина - SportShop</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .cart-item-image img {
+      max-width: 60px;
+      max-height: 60px;
+      object-fit: contain;
+    }
+    .quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .quantity-btn {
+      width: 25px;
+      height: 25px;
+      background: #f0f0f0;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .quantity-input {
+      width: 40px;
+      text-align: center;
+    }
+    .remove-btn {
+      background: #ffebee;
+      color: #c62828;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .error-message {
+      color: #c62828;
+      padding: 10px;
+      background: #ffebee;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+  </style>
 </head>
 <body>
 <div class="cart-icon">
@@ -13,6 +54,7 @@
     <span id="cart-counter" class="cart-counter"></span>
   </a>
 </div>
+
 <div class="main-container">
   <header class="main-header">
     <h1>SportShop</h1>
@@ -23,9 +65,10 @@
   </header>
 
   <main class="cart-container">
-    <div id="cartItems">
+    <div id="cartItems" class="cart-items-wrapper">
       <div class="loading">Загрузка корзины...</div>
     </div>
+
     <div id="cartSummary" class="cart-summary">
       <h3>Итого: <span id="cartTotal">0</span> ₽</h3>
       <button id="checkoutBtn" class="btn-checkout">Оформить заказ</button>
