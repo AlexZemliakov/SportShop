@@ -1,6 +1,7 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder, delete};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
+use actix_session::Session;
 
 #[derive(Debug, Serialize, FromRow)]
 #[allow(dead_code)]
@@ -47,6 +48,31 @@ pub struct CreateCategory {
     pub description: Option<String>,
     #[serde(default)]
     pub image_url: Option<String>,
+}
+
+// Cart models
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CartItem {
+    pub id: i64,
+    pub product_id: i64,
+    pub quantity: i32,
+    pub session_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow)]
+pub struct CartItemWithProduct {
+    pub id: i64,
+    pub product_id: i64,
+    pub quantity: i32,
+    pub name: String,
+    pub price: f64,
+    pub image_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CartItemRequest {
+    pub product_id: i64,
+    pub quantity: i32,
 }
 
 // Products handlers
@@ -282,6 +308,178 @@ pub async fn delete_category(
     }
 }
 
+// Cart handlers
+#[post("/cart")]
+pub async fn add_to_cart(
+    pool: web::Data<SqlitePool>,
+    item: web::Json<CartItemRequest>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            let new_id = uuid::Uuid::new_v4().to_string();
+            session.insert("session_id", &new_id).unwrap();
+            new_id
+        }
+        Err(e) => {
+            eprintln!("Failed to get session: {}", e);
+            return HttpResponse::InternalServerError().json("Session error");
+        }
+    };
+
+    // Check if product exists
+    match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM products WHERE id = ?")
+        .bind(item.product_id)
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(count) if count == 0 => {
+            return HttpResponse::NotFound().json("Product not found");
+        }
+        Err(e) => {
+            eprintln!("Failed to check product: {}", e);
+            return HttpResponse::InternalServerError().json("Failed to check product");
+        }
+        _ => {}
+    };
+
+    // Check if item already in cart
+    match sqlx::query_as::<_, CartItem>(
+        "SELECT * FROM cart WHERE product_id = ? AND session_id = ?"
+    )
+        .bind(item.product_id)
+        .bind(&session_id)
+        .fetch_optional(&**pool)
+        .await
+    {
+        Ok(Some(existing_item)) => {
+            // Update quantity if already exists
+            let new_quantity = existing_item.quantity + item.quantity;
+            match sqlx::query(
+                "UPDATE cart SET quantity = ? WHERE id = ?"
+            )
+                .bind(new_quantity)
+                .bind(existing_item.id)
+                .execute(&**pool)
+                .await
+            {
+                Ok(_) => HttpResponse::Ok().json("Cart updated"),
+                Err(e) => {
+                    eprintln!("Failed to update cart: {}", e);
+                    HttpResponse::InternalServerError().json("Failed to update cart")
+                }
+            }
+        }
+        Ok(None) => {
+            // Add new item to cart
+            match sqlx::query(
+                "INSERT INTO cart (product_id, quantity, session_id) VALUES (?, ?, ?)"
+            )
+                .bind(item.product_id)
+                .bind(item.quantity)
+                .bind(&session_id)
+                .execute(&**pool)
+                .await
+            {
+                Ok(_) => HttpResponse::Created().json("Item added to cart"),
+                Err(e) => {
+                    eprintln!("Failed to add to cart: {}", e);
+                    HttpResponse::InternalServerError().json("Failed to add to cart")
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to check cart: {}", e);
+            HttpResponse::InternalServerError().json("Failed to check cart")
+        }
+    }
+}
+
+#[get("/cart")]
+pub async fn get_cart(
+    pool: web::Data<SqlitePool>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => return HttpResponse::Ok().json(Vec::<CartItemWithProduct>::new()),
+    };
+
+    match sqlx::query_as::<_, CartItemWithProduct>(
+        r#"
+        SELECT c.id, c.product_id, c.quantity, p.name, p.price, p.image_url
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.session_id = ?
+        "#
+    )
+        .bind(&session_id)
+        .fetch_all(&**pool)
+        .await
+    {
+        Ok(items) => HttpResponse::Ok().json(items),
+        Err(e) => {
+            eprintln!("Failed to fetch cart: {}", e);
+            HttpResponse::InternalServerError().json("Failed to fetch cart")
+        }
+    }
+}
+
+#[delete("/cart/{id}")]
+pub async fn remove_from_cart(
+    pool: web::Data<SqlitePool>,
+    item_id: web::Path<i64>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => return HttpResponse::Unauthorized().json("Session required"),
+    };
+
+    match sqlx::query(
+        "DELETE FROM cart WHERE id = ? AND session_id = ?"
+    )
+        .bind(item_id.into_inner())
+        .bind(&session_id)
+        .execute(&**pool)
+        .await
+    {
+        Ok(result) if result.rows_affected() > 0 => HttpResponse::NoContent().finish(),
+        Ok(_) => HttpResponse::NotFound().json("Item not found in your cart"),
+        Err(e) => {
+            eprintln!("Failed to remove from cart: {}", e);
+            HttpResponse::InternalServerError().json("Failed to remove from cart")
+        }
+    }
+}
+
+#[get("/cart/count")]
+pub async fn get_cart_count(
+    pool: web::Data<SqlitePool>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => return HttpResponse::Ok().json(0),
+    };
+
+    match sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT SUM(quantity) FROM cart WHERE session_id = ?"
+    )
+        .bind(&session_id)
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(Some(count)) => HttpResponse::Ok().json(count),
+        Ok(None) => HttpResponse::Ok().json(0),  // Если SUM вернул NULL (корзина пуста)
+        Err(e) => {
+            eprintln!("Failed to get cart count: {}", e);
+            HttpResponse::InternalServerError().json("Failed to get cart count")
+        }
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
@@ -294,6 +492,11 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             // Categories routes
             .route("/categories", web::get().to(list_categories))
             .route("/categories", web::post().to(create_category))
-            .route("/categories/{id}", web::delete().to(delete_category)),
+            .route("/categories/{id}", web::delete().to(delete_category))
+            // Cart routes
+            .service(add_to_cart)
+            .service(get_cart)
+            .service(remove_from_cart)
+            .service(get_cart_count),
     );
 }

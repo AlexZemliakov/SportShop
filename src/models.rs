@@ -95,15 +95,18 @@ pub struct OrderItemCreate {
     pub price_at_order: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CartItem {
     pub id: i64,
-    pub user_id: i64,
     pub product_id: i64,
     pub quantity: i32,
-    pub created_at: NaiveDateTime,
+    pub user_session: String, // Или user_id если есть аутентификация
 }
-
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CartItemRequest {
+    pub product_id: i64,
+    pub quantity: i32,
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CartItemCreate {
     pub user_id: i64,
