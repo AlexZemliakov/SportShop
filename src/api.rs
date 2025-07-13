@@ -494,15 +494,18 @@ pub async fn update_cart_item(
         _ => return HttpResponse::Unauthorized().json("Session required"),
     };
 
+    // Проверяем, что количество не отрицательное
+    let new_quantity = quantity.into_inner().max(1);
+
     match sqlx::query(
         "UPDATE cart SET quantity = ? WHERE id = ? AND session_id = ?"
     )
-        .bind(quantity.into_inner())
+        .bind(new_quantity)
         .bind(item_id.into_inner())
         .bind(session_id)
         .execute(&**pool)
         .await {
-        Ok(result) if result.rows_affected() > 0 => HttpResponse::Ok().json("Cart updated"),
+        Ok(result) if result.rows_affected() > 0 => HttpResponse::Ok().json(new_quantity),
         Ok(_) => HttpResponse::NotFound().json("Item not found"),
         Err(e) => HttpResponse::InternalServerError().json(format!("Error: {}", e))
     }

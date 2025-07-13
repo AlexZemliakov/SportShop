@@ -1,16 +1,21 @@
 document.addEventListener('DOMContentLoaded', function() {
     loadCartItems();
+    updateCartCounter();
 
     // Обновление счетчика корзины
     async function updateCartCounter() {
-        const response = await fetch('/api/cart/count');
-        if (response.ok) {
-            const count = await response.json();
-            const counter = document.getElementById('cart-counter');
-            if (counter) {
-                counter.textContent = count;
-                counter.style.display = count > 0 ? 'flex' : 'none';
+        try {
+            const response = await fetch('/api/cart/count');
+            if (response.ok) {
+                const count = await response.json();
+                const counter = document.getElementById('cart-counter');
+                if (counter) {
+                    counter.textContent = count;
+                    counter.style.display = count > 0 ? 'flex' : 'none';
+                }
             }
+        } catch (error) {
+            console.error('Ошибка обновления счетчика:', error);
         }
     }
 
@@ -53,54 +58,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="cart-item-info">
                     <div class="cart-item-title">${item.name}</div>
-                    <div class="cart-item-price">${item.price.toFixed(2)} ₽</div>
-                    <div class="cart-item-quantity">
-                        <button class="quantity-btn minus">-</button>
-                        <input type="text" class="quantity-input" value="${item.quantity}">
-                        <button class="quantity-btn plus">+</button>
+                    <div class="cart-item-price">${(item.price * item.quantity).toFixed(2)} ₽</div>
+                    <div class="quantity-controls">
+                        <button class="quantity-btn quantity-minus">-</button>
+                        <input type="text" class="quantity-input" value="${item.quantity}" readonly>
+                        <button class="quantity-btn quantity-plus">+</button>
                         <span class="remove-item">Удалить</span>
                     </div>
                 </div>
             </div>
         `).join('');
-
-        // Добавляем обработчики событий
-        document.querySelectorAll('.quantity-btn.minus').forEach(btn => {
-            btn.addEventListener('click', decreaseQuantity);
-        });
-
-        document.querySelectorAll('.quantity-btn.plus').forEach(btn => {
-            btn.addEventListener('click', increaseQuantity);
-        });
-
-        document.querySelectorAll('.remove-item').forEach(btn => {
-            btn.addEventListener('click', removeItem);
-        });
     }
 
-    // Уменьшение количества
-    async function decreaseQuantity(e) {
+    // Обработчики событий
+    document.addEventListener('click', async (e) => {
         const itemElement = e.target.closest('.cart-item');
+        if (!itemElement) return;
+
         const itemId = itemElement.dataset.id;
         const input = itemElement.querySelector('.quantity-input');
-        let quantity = parseInt(input.value) - 1;
+        let quantity = parseInt(input.value);
 
-        if (quantity < 1) quantity = 1;
+        if (e.target.classList.contains('quantity-minus')) {
+            quantity = Math.max(1, quantity - 1);
+            await updateCartItem(itemId, quantity);
+        }
+        else if (e.target.classList.contains('quantity-plus')) {
+            quantity++;
+            await updateCartItem(itemId, quantity);
+        }
+        else if (e.target.classList.contains('remove-item')) {
+            if (confirm('Удалить товар из корзины?')) {
+                await removeItem(itemId);
+            }
+        }
+    });
 
-        await updateCartItem(itemId, quantity);
-    }
-
-    // Увеличение количества
-    async function increaseQuantity(e) {
-        const itemElement = e.target.closest('.cart-item');
-        const itemId = itemElement.dataset.id;
-        const input = itemElement.querySelector('.quantity-input');
-        const quantity = parseInt(input.value) + 1;
-
-        await updateCartItem(itemId, quantity);
-    }
-
-    // Обновление количества
+    // Обновление количества товара
     async function updateCartItem(itemId, quantity) {
         try {
             const response = await fetch(`/api/cart/${itemId}`, {
@@ -115,14 +109,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Ошибка:', error);
+            alert('Не удалось обновить количество');
         }
     }
 
     // Удаление товара
-    async function removeItem(e) {
-        const itemElement = e.target.closest('.cart-item');
-        const itemId = itemElement.dataset.id;
-
+    async function removeItem(itemId) {
         try {
             const response = await fetch(`/api/cart/${itemId}`, {
                 method: 'DELETE'
@@ -134,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Ошибка:', error);
+            alert('Не удалось удалить товар');
         }
     }
 
@@ -145,7 +138,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Оформление заказа
     document.getElementById('checkoutBtn')?.addEventListener('click', () => {
-        alert('Заказ оформлен!');
+        if (document.getElementById('cartItems').children.length === 0) {
+            alert('Корзина пуста!');
+            return;
+        }
+        alert('Заказ оформлен! Спасибо за покупку!');
         // Здесь можно добавить реальное оформление заказа
     });
 });

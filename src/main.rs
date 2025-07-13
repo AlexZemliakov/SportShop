@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpServer, HttpResponse};
+use actix_web::{web, App, HttpServer, HttpResponse, Responder};
 use actix_files::Files;
 use actix_cors::Cors;
 use actix_web::http::header;
@@ -10,6 +10,16 @@ use actix_web::cookie::Key;
 mod api;
 mod models;
 mod database;
+
+async fn serve_cart() -> impl Responder {
+    match std::fs::read_to_string("frontend/public/cart.html") {
+        Ok(content) => HttpResponse::Ok()
+            .content_type("text/html")
+            .body(content),
+        Err(_) => HttpResponse::NotFound()
+            .body("Cart page not found")
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -59,9 +69,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .configure(api::config)
             .service(
+                web::resource("/cart")
+                    .route(web::get().to(serve_cart))
+            )
+            .service(
                 Files::new("/", &public_dir)
                     .index_file("index.html")
-                    .show_files_listing(),
+                    .show_files_listing()
             )
     })
         .bind("127.0.0.1:8080")?
