@@ -72,24 +72,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Обработчики событий
     document.addEventListener('click', async (e) => {
-        const itemElement = e.target.closest('.cart-item');
-        if (!itemElement) return;
+        if (e.target.classList.contains('quantity-minus') ||
+            e.target.classList.contains('quantity-plus') ||
+            e.target.classList.contains('remove-item')) {
 
-        const itemId = itemElement.dataset.id;
-        const input = itemElement.querySelector('.quantity-input');
-        let quantity = parseInt(input.value);
+            const itemElement = e.target.closest('.cart-item');
+            const itemId = itemElement.dataset.id;
+            const input = itemElement.querySelector('.quantity-input');
+            let quantity = parseInt(input.value);
 
-        if (e.target.classList.contains('quantity-minus')) {
-            quantity = Math.max(1, quantity - 1);
-            await updateCartItem(itemId, quantity);
-        }
-        else if (e.target.classList.contains('quantity-plus')) {
-            quantity++;
-            await updateCartItem(itemId, quantity);
-        }
-        else if (e.target.classList.contains('remove-item')) {
-            if (confirm('Удалить товар из корзины?')) {
-                await removeItem(itemId);
+            if (e.target.classList.contains('quantity-minus')) {
+                quantity = Math.max(1, quantity - 1);
+            } else if (e.target.classList.contains('quantity-plus')) {
+                quantity++;
+            } else if (e.target.classList.contains('remove-item')) {
+                if (!confirm('Удалить товар из корзины?')) return;
+            }
+
+            try {
+                const method = e.target.classList.contains('remove-item') ? 'DELETE' : 'PUT';
+                const url = `/api/cart/${itemId}`;
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: method === 'PUT' ? JSON.stringify({ quantity }) : null
+                });
+
+                if (response.ok) {
+                    loadCartItems();
+                    updateCartCounter();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при обновлении корзины');
             }
         }
     });
