@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Корзина - SportShop</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="cart-icon">
+  <a href="/cart">
+    <img src="/images/cart-icon.png" alt="Cart">
+    <span id="cart-counter" class="cart-counter"></span>
+  </a>
+</div>
+<div class="main-container">
+  <header class="main-header">
+    <h1>SportShop</h1>
+    <p>Ваша корзина</p>
+    <nav>
+      <a href="/">На главную</a>
+    </nav>
+  </header>
+
+  <main class="cart-container">
+    <div id="cartItems">
+      <div class="loading">Загрузка корзины...</div>
+    </div>
+    <div id="cartSummary" class="cart-summary">
+      <h3>Итого: <span id="cartTotal">0</span> ₽</h3>
+      <button id="checkoutBtn" class="btn-checkout">Оформить заказ</button>
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p>© SportShop - быстро, надежно, качественно.</p>
+  </footer>
+</div>
+
+<script src="/js/cart.js"></script>
+</body>
+</html>

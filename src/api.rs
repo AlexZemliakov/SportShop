@@ -1,7 +1,8 @@
-use actix_web::{get, post, web, HttpResponse, Responder, delete};
+use actix_web::{get, post, web, HttpResponse, Responder, delete, put};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use actix_session::Session;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, FromRow)]
 #[allow(dead_code)]
@@ -479,6 +480,61 @@ pub async fn get_cart_count(
         }
     }
 }
+////////////////////////////////////////////
+// Обновление количества товара в корзине
+#[put("/cart/{id}")]
+pub async fn update_cart_item(
+    pool: web::Data<SqlitePool>,
+    item_id: web::Path<i64>,
+    quantity: web::Json<i32>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => return HttpResponse::Unauthorized().json("Session required"),
+    };
+
+    match sqlx::query(
+        "UPDATE cart SET quantity = ? WHERE id = ? AND session_id = ?"
+    )
+        .bind(quantity.into_inner())
+        .bind(item_id.into_inner())
+        .bind(session_id)
+        .execute(&**pool)
+        .await {
+        Ok(result) if result.rows_affected() > 0 => HttpResponse::Ok().json("Cart updated"),
+        Ok(_) => HttpResponse::NotFound().json("Item not found"),
+        Err(e) => HttpResponse::InternalServerError().json(format!("Error: {}", e))
+    }
+}
+
+// Удаление товара из корзины
+#[delete("/cart/{id}")]
+pub async fn remove_cart_item(
+    pool: web::Data<SqlitePool>,
+    item_id: web::Path<i64>,
+    session: Session,
+) -> impl Responder {
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => return HttpResponse::Unauthorized().json("Session required"),
+    };
+
+    match sqlx::query(
+        "DELETE FROM cart WHERE id = ? AND session_id = ?"
+    )
+        .bind(item_id.into_inner())
+        .bind(session_id)
+        .execute(&**pool)
+        .await {
+        Ok(result) if result.rows_affected() > 0 => HttpResponse::NoContent().finish(),
+        Ok(_) => HttpResponse::NotFound().json("Item not found"),
+        Err(e) => HttpResponse::InternalServerError().json(format!("Error: {}", e))
+    }
+}
+////////////////////////////////////////////
+
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(

@@ -3,6 +3,9 @@ use actix_files::Files;
 use actix_cors::Cors;
 use actix_web::http::header;
 use std::path::Path;
+use actix_session::SessionMiddleware;
+use actix_session::storage::CookieSessionStore;
+use actix_web::cookie::Key;
 
 mod api;
 mod models;
@@ -21,6 +24,9 @@ async fn main() -> std::io::Result<()> {
     let pool = database::init_db().await
         .expect("Failed to initialize database");
 
+    // Для production используйте фиксированный ключ из конфига!
+    let secret_key = Key::generate();
+
     HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin("http://localhost:8080")
@@ -36,6 +42,14 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
+            .wrap(
+                SessionMiddleware::builder(
+                    CookieSessionStore::default(),
+                    secret_key.clone()
+                )
+                    .cookie_secure(false)  // Для разработки
+                    .build()
+            )
             .app_data(web::JsonConfig::default().error_handler(|err, _req| {
                 actix_web::error::InternalError::from_response(
                     err,

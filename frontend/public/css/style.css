@@ -527,18 +527,118 @@ tr:hover {
     }
 }
 .cart-icon {
-    position: relative;
-    display: inline-block;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+.cart-icon img {
+    width: 100px; /* Уменьшаем размер иконки */
+    height: 100px;
+    transition: transform 0.3s;
+}
+
+.cart-icon img:hover {
+    transform: scale(1.1);
 }
 
 .cart-counter {
     position: absolute;
-    top: -10px;
-    right: -10px;
-    background: red;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
     color: white;
     border-radius: 50%;
-    padding: 2px 6px;
+    width: 18px;
+    height: 18px;
     font-size: 12px;
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    display: none; /* По умолчанию скрыт */
+}
+
+/* Стили корзины */
+.cart-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.cart-item-image {
+    width: 80px;
+    height: 80px;
+    margin-right: 20px;
+}
+
+.cart-item-info {
+    flex-grow: 1;
+}
+
+.cart-item-title {
+    font-size: 18px;
+    margin-bottom: 5px;
+}
+
+.cart-item-price {
+    font-weight: bold;
+    color: #333;
+}
+
+.cart-item-quantity {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.quantity-btn {
+    width: 25px;
+    height: 25px;
+    background: #f0f0f0;
+    border: none;
+    cursor: pointer;
+}
+
+.quantity-input {
+    width: 40px;
+    text-align: center;
+    margin: 0 5px;
+}
+
+.remove-item {
+    color: #ff4757;
+    cursor: pointer;
+    margin-left: 20px;
+}
+
+.cart-summary {
+    margin-top: 30px;
+    text-align: right;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+.btn-checkout {
+    background: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.empty-cart {
+    text-align: center;
+    padding: 50px;
+    font-size: 18px;
 }
