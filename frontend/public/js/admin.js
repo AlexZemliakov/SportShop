@@ -174,20 +174,30 @@ async function editProduct(id) {
     }
 }
 
-async function deleteProduct(id) {
-    if (confirm('Вы уверены, что хотите удалить этот товар?')) {
-        try {
-            const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Ошибка сервера');
+async function deleteProduct(productId) {
+    if (!confirm('Вы уверены, что хотите удалить этот товар?')) return;
+
+    try {
+        const response = await fetch(`/api/products/${productId}`, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
             }
-            loadProducts(document.getElementById('productCategoryFilter').value);
-            showSuccess('Товар удален');
-        } catch (error) {
-            console.error('Ошибка удаления товара:', error);
-            showError(error.message || 'Ошибка удаления товара');
+        });
+
+        console.log('Delete response:', response); // Добавьте логирование
+
+        if (response.status === 204) {
+            showSuccess('Товар успешно удален');
+            loadProducts();
+        } else {
+            const errorText = await response.text();
+            console.error('Delete error:', errorText);
+            throw new Error(errorText || 'Ошибка сервера');
         }
+    } catch (error) {
+        console.error('Ошибка удаления товара:', error);
+        showError(error.message);
     }
 }
 

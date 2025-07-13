@@ -186,25 +186,41 @@ pub async fn create_product(
     }
 }
 
+#[delete("/products/{id}")]
 pub async fn delete_product(
     pool: web::Data<SqlitePool>,
     product_id: web::Path<i64>,
 ) -> impl Responder {
     let id = product_id.into_inner();
 
+    // Сначала удаляем связанные записи из корзины
+    match sqlx::query("DELETE FROM cart WHERE product_id = ?")
+        .bind(id)
+        .execute(&**pool)
+        .await
+    {
+        Ok(_) => println!("DEBUG: Removed cart items for product {}", id),
+        Err(e) => {
+            eprintln!("DEBUG: Failed to remove cart items: {}", e);
+            return HttpResponse::InternalServerError()
+                .json(format!("Failed to remove cart items: {}", e));
+        }
+    }
+
+    // Затем удаляем сам товар
     match sqlx::query("DELETE FROM products WHERE id = ?")
         .bind(id)
         .execute(&**pool)
         .await
     {
-        Ok(_) => HttpResponse::NoContent().finish(),
+        Ok(result) if result.rows_affected() > 0 => HttpResponse::NoContent().finish(),
+        Ok(_) => HttpResponse::NotFound().json("Product not found"),
         Err(e) => {
-            eprintln!("Failed to delete product: {}", e);
-            HttpResponse::InternalServerError().json("Failed to delete product")
+            eprintln!("DEBUG: Product delete error: {}", e);
+            HttpResponse::InternalServerError().json(format!("Delete error: {}", e))
         }
     }
 }
-
 pub async fn get_products_by_category(
     pool: web::Data<SqlitePool>,
     category_id: web::Path<i64>,
@@ -521,7 +537,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(get_product)
             .route("/products", web::get().to(list_products))
             .route("/products", web::post().to(create_product))
-            .route("/products/{id}", web::delete().to(delete_product))
+            .service(delete_product)
             .route("/categories/{id}/products", web::get().to(get_products_by_category))
             // Categories routes
             .route("/categories", web::get().to(list_categories))
