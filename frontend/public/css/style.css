@@ -640,6 +640,20 @@ tr:hover {
     border-radius: 5px;
 }
 
+/* Стиль для блока итого (не трогаем id, работаем через класс) */
+.cart-summary h3 {
+    color: #000000; /* Чёрный цвет */
+    font-size: 1.2em;
+    margin-bottom: 15px;
+}
+
+/* Дополнительно можно стилизовать сумму */
+.cart-summary #cartTotal {
+    font-weight: bold;
+    color: #000000; /* Также чёрный для суммы */
+}
+
+
 .btn-checkout {
     background: #4CAF50;
     color: white;
