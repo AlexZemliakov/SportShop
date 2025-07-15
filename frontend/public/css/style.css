@@ -690,3 +690,24 @@ tr:hover {
 .cart-summary .total-price {
     background: #f5f5f5;
 }
+
+.address-input {
+    margin: 15px 0;
+}
+
+.address-input label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #000;
+    font-size: 16px;
+}
+
+.address-input input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
