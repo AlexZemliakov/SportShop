@@ -3,7 +3,9 @@ use actix_web::{get, post, web, HttpResponse, Responder, delete, put};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use actix_session::Session;
+use serde_json::json;
 use uuid::Uuid;
+use crate::AppState;
 
 #[derive(Debug, Serialize, FromRow)]
 #[allow(dead_code)]
@@ -186,6 +188,81 @@ pub async fn create_product(
     }
 }
 
+#[put("/products/{id}")]
+pub async fn update_product(
+    pool: web::Data<SqlitePool>,
+    product_id: web::Path<i64>,
+    product: web::Json<CreateProduct>,
+) -> impl Responder {
+    let id = product_id.into_inner();
+    println!("Updating product {}: {:?}", id, product);
+
+    // Check if product exists
+    let exists: bool = match sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM products WHERE id = ?)"
+    )
+        .bind(id)
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(exists) => exists,
+        Err(e) => {
+            eprintln!("Failed to check product existence: {}", e);
+            return HttpResponse::InternalServerError().json("Failed to check product");
+        }
+    };
+
+    if !exists {
+        return HttpResponse::NotFound().json("Product not found");
+    }
+
+    // Check if category exists (if provided)
+    if let Some(category_id) = product.category_id {
+        let category_exists: bool = match sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
+        )
+            .bind(category_id)
+            .fetch_one(&**pool)
+            .await
+        {
+            Ok(exists) => exists,
+            Err(e) => {
+                eprintln!("Failed to check category existence: {}", e);
+                return HttpResponse::BadRequest().json("Failed to check category");
+            }
+        };
+
+        if !category_exists {
+            return HttpResponse::BadRequest().json("Category does not exist");
+        }
+    }
+
+    // Update product
+    match sqlx::query(
+        r#"
+        UPDATE products 
+        SET name = ?, description = ?, price = ?, stock = ?, image_url = ?, category_id = ?
+        WHERE id = ?
+        "#
+    )
+        .bind(&product.name)
+        .bind(&product.description)
+        .bind(product.price)
+        .bind(product.stock)
+        .bind(&product.image_url)
+        .bind(product.category_id)
+        .bind(id)
+        .execute(&**pool)
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().json("Product updated"),
+        Err(e) => {
+            eprintln!("Failed to update product: {}", e);
+            HttpResponse::InternalServerError().json(format!("Failed to update product: {}", e))
+        }
+    }
+}
+
 #[delete("/products/{id}")]
 pub async fn delete_product(
     pool: web::Data<SqlitePool>,
@@ -268,6 +345,25 @@ pub async fn list_categories(pool: web::Data<SqlitePool>) -> impl Responder {
     }
 }
 
+#[get("/categories/{id}")]
+pub async fn get_category(
+    pool: web::Data<SqlitePool>,
+    category_id: web::Path<i64>,
+) -> impl Responder {
+    match sqlx::query_as::<_, Category>("SELECT * FROM categories WHERE id = ?")
+        .bind(category_id.into_inner())
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(category) => HttpResponse::Ok().json(category),
+        Err(sqlx::Error::RowNotFound) => HttpResponse::NotFound().json("Category not found"),
+        Err(e) => {
+            eprintln!("Failed to fetch category: {}", e);
+            HttpResponse::InternalServerError().json("Failed to fetch category")
+        }
+    }
+}
+
 pub async fn create_category(
     pool: web::Data<SqlitePool>,
     category: web::Json<CreateCategory>,
@@ -285,6 +381,52 @@ pub async fn create_category(
         Err(e) => {
             eprintln!("Failed to create category: {}", e);
             HttpResponse::InternalServerError().json("Failed to create category")
+        }
+    }
+}
+
+#[put("/categories/{id}")]
+pub async fn update_category(
+    pool: web::Data<SqlitePool>,
+    category_id: web::Path<i64>,
+    category: web::Json<CreateCategory>,
+) -> impl Responder {
+    let id = category_id.into_inner();
+
+    // Check if category exists
+    let exists: bool = match sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
+    )
+        .bind(id)
+        .fetch_one(&**pool)
+        .await
+    {
+        Ok(exists) => exists,
+        Err(e) => {
+            eprintln!("Failed to check category existence: {}", e);
+            return HttpResponse::InternalServerError().json("Failed to check category");
+        }
+    };
+
+    if !exists {
+        return HttpResponse::NotFound().json("Category not found");
+    }
+
+    // Update category
+    match sqlx::query(
+        "UPDATE categories SET name = ?, description = ?, image_url = ? WHERE id = ?"
+    )
+        .bind(&category.name)
+        .bind(&category.description)
+        .bind(&category.image_url)
+        .bind(id)
+        .execute(&**pool)
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().json("Category updated"),
+        Err(e) => {
+            eprintln!("Failed to update category: {}", e);
+            HttpResponse::InternalServerError().json("Failed to update category")
         }
     }
 }
@@ -525,6 +667,92 @@ pub async fn get_cart_count(
         }
     }
 }
+
+
+
+#[post("/create-payment")]
+async fn create_payment(
+    state: web::Data<AppState>,
+    data: web::Json<HashMap<String, serde_json::Value>>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let user_id = data["user_id"].as_i64()
+        .ok_or(actix_web::error::ErrorBadRequest("Invalid user_id"))?;
+
+    let amount = data["amount"].as_f64()
+        .ok_or(actix_web::error::ErrorBadRequest("Invalid amount"))?;
+
+    let (order_id, payment_url) = state.ton_processor.create_payment(user_id, amount)
+        .await
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
+
+    // Отправляем уведомление пользователю через Telegram
+    if let Ok(order_id_i64) = order_id.parse::<i64>() {
+        if let Err(e) = state.telegram_notifier.notify_user_with_payment(order_id_i64).await {
+            eprintln!("Ошибка отправки уведомления: {:?}", e);
+            // Продолжаем выполнение, даже если уведомление не отправлено
+        }
+    }
+
+    Ok(HttpResponse::Ok().json(json!({ 
+        "order_id": order_id,
+        "payment_url": payment_url
+    })))
+}
+
+
+#[post("/orders")]
+async fn create_order(
+    state: web::Data<AppState>,
+    session: Session
+) -> Result<HttpResponse, actix_web::Error> {
+    // Получаем ID сессии
+    let session_id = match session.get::<String>("session_id") {
+        Ok(Some(id)) => id,
+        _ => {
+            // Генерируем новый ID сессии, если его нет
+            let new_id = Uuid::new_v4().to_string();
+            session.insert("session_id", new_id.clone())?;
+            new_id
+        }
+    };
+
+    let db = &state.db_pool;
+
+    // Создаем новый заказ из корзины
+    let order_id = sqlx::query_scalar::<_, i64>(
+        r#"
+        INSERT INTO orders (user_id, total_amount, status)
+        SELECT c.user_id, SUM(p.price * c.quantity), 'pending'
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.session_id = ?
+        RETURNING id
+        "#
+    )
+        .bind(session_id)
+        .fetch_one(db)
+        .await
+        .map_err(|e| {
+            eprintln!("Ошибка создания заказа: {:?}", e);
+            actix_web::error::ErrorInternalServerError("Ошибка создания заказа")
+        })?;
+
+    // Отправляем уведомление в группу администраторов
+    if let Err(e) = state.telegram_notifier.notify_admin_new_order(order_id).await {
+        eprintln!("Ошибка отправки уведомления администраторам: {:?}", e);
+        // Продолжаем выполнение, даже если уведомление не отправлено
+    }
+
+    Ok(HttpResponse::Ok().json(json!({ 
+        "order_id": order_id,
+        "redirect_url": format!("https://t.me/SportShopxxx_bot?start=order_{}", order_id)
+    })))
+}
+
+
+
+
+
 ////////////////////////////////////////////
 // Обновление количества товара в корзин
 
@@ -537,11 +765,14 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(get_product)
             .route("/products", web::get().to(list_products))
             .route("/products", web::post().to(create_product))
+            .service(update_product)
             .service(delete_product)
             .route("/categories/{id}/products", web::get().to(get_products_by_category))
             // Categories routes
             .route("/categories", web::get().to(list_categories))
             .route("/categories", web::post().to(create_category))
+            .service(get_category)
+            .service(update_category)
             .route("/categories/{id}", web::delete().to(delete_category))
             // Cart routes
             .service(add_to_cart)
@@ -549,5 +780,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(remove_cart_item)  // Исправлено с remove_from_cart на remove_cart_item
             .service(get_cart_count)
             .service(update_cart_item)
+            // Order and payment routes
+            .service(create_order)
+            .service(create_payment)
     );
 }

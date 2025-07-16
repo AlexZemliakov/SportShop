@@ -97,7 +97,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        document.getElementById('checkoutBtn')?.addEventListener('click', checkout);
+        document.getElementById('checkout-btn').addEventListener('click', async () => {
+            const cartItems = getCartItems(); // Ваша функция получения корзины
+
+            if (cartItems.length === 0) return;
+
+            const response = await fetch('/api/create-order', {
+                method: 'POST',
+                body: JSON.stringify({ items: cartItems })
+            });
+
+            const { order_id, payment_url } = await response.json();
+
+            // Отправка данных в Telegram бота
+            Telegram.WebApp.sendData(JSON.stringify({
+                action: 'process_payment',
+                order_id,
+                payment_url
+            }));
+        });
     }
 
     // Изменение количества товара
@@ -203,4 +221,43 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => errorElement.remove(), 5000);
         }
     }
+
+    document.getElementById("checkoutBtn").addEventListener("click", async () => {
+        try {
+            const response = await fetch("/api/orders", { method: "POST" });
+            if (response.ok) {
+                const order = await response.json();
+
+                // Проверяем, запущено ли приложение из Telegram WebApp
+                if (window.Telegram && window.Telegram.WebApp) {
+                    // Отправляем данные в Telegram бота
+                    Telegram.WebApp.sendData(JSON.stringify({
+                        action: 'process_order',
+                        order_id: order.order_id
+                    }));
+
+                    // Закрываем WebApp
+                    Telegram.WebApp.close();
+                } else {
+                    // Обычное перенаправление в Telegram
+                    if (order.redirect_url) {
+                        window.location.href = order.redirect_url;
+                    } else {
+                        // Запасной вариант, если redirect_url не пришел
+                        const bot_username = "@SportShopxxx_bot";
+                        const redirectUrl = `https://t.me/${bot_username}?start=order_${order.order_id}`;
+                        window.location.href = redirectUrl;
+                    }
+                }
+            } else {
+                console.error("Ошибка оформления заказа:", await response.text());
+                alert("Ошибка оформления заказа! Попробуйте ещё раз");
+            }
+        } catch (error) {
+            console.error("Ошибка:", error);
+        }
+    });
+
+
+
 });

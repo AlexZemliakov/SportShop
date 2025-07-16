@@ -690,3 +690,16 @@ tr:hover {
 .cart-summary .total-price {
     background: #f5f5f5;
 }
+/* Медиа-запросы для мобильных */
+@media (max-width: 768px) {
+    .product-card {
+        width: 100%;
+        margin: 10px 0;
+    }
+
+    .cart-item {
+        flex-direction: column;
+    }
+
+    /* Другие адаптивные стили */
+}
