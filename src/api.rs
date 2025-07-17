@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use actix_web::{get, post, web, HttpResponse, Responder, delete, put};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, SqlitePool, Row};
 use actix_session::Session;
 use serde_json::json;
 use uuid::Uuid;
@@ -54,6 +54,16 @@ pub struct CreateCategory {
     pub image_url: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateCategory {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub description: Option<Option<String>>,
+    #[serde(default)]
+    pub image_url: Option<Option<String>>,
+}
+
 // Cart models
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct CartItem {
@@ -80,7 +90,12 @@ pub struct CartItemRequest {
 }
 
 // Products handlers
-pub async fn list_products(pool: web::Data<SqlitePool>) -> impl Responder {
+#[get("/products")]
+#[doc = "// Получение списка продуктов"]
+pub async fn list_products(
+    state: web::Data<AppState>,
+) -> impl Responder {
+    let pool = &state.db_pool;
     match sqlx::query_as::<_, Product>(
         r#"
         SELECT
@@ -95,7 +110,7 @@ pub async fn list_products(pool: web::Data<SqlitePool>) -> impl Responder {
         FROM products
         "#
     )
-        .fetch_all(&**pool)
+    .fetch_all(pool)
         .await
     {
         Ok(products) => HttpResponse::Ok().json(products),
@@ -106,14 +121,47 @@ pub async fn list_products(pool: web::Data<SqlitePool>) -> impl Responder {
     }
 }
 
-#[get("/product/{id}")]
-pub async fn get_product(
+// Обработчик для получения продукта по ID
+async fn get_product_handler(
     pool: web::Data<SqlitePool>,
     product_id: web::Path<i64>,
 ) -> impl Responder {
-    match sqlx::query_as::<_, Product>(
+    let product_id = product_id.into_inner();
+    println!("Получен запрос на продукт с ID: {}", product_id);
+    
+    // Проверяем существование таблицы products
+    match sqlx::query_scalar::<_, i32>(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='products'"
+    )
+    .fetch_one(&**pool)
+    .await {
+        Ok(count) if count > 0 => {
+            println!("✅ Таблица products существует");
+        },
+        Ok(_) => {
+            // Таблица не существует, возвращаем ошибку
+            eprintln!("❌ Таблица products не найдена в базе данных");
+            return HttpResponse::NotFound().json(json!({
+                "error": "Таблица products не найдена в базе данных"
+            }));
+        },
+        Err(e) => {
+            // Ошибка при проверке существования таблицы
+            eprintln!("❌ Ошибка при проверке существования таблицы products: {}", e);
+            return HttpResponse::InternalServerError().json(json!({
+                "error": "Ошибка при проверке существования таблицы products",
+                "details": e.to_string()
+            }));
+        }
+    }
+    
+    // Пытаемся получить продукт из базы данных
+    println!("Выполняем запрос к базе данных для продукта с ID: {}", product_id);
+    
+    // Сначала получаем необработанные данные для отладки
+    match sqlx::query(
         r#"
-        SELECT
+        SELECT 
             id,
             name,
             description,
@@ -121,28 +169,68 @@ pub async fn get_product(
             stock,
             image_url,
             category_id,
-            strftime('%Y-%m-%d %H:%M:%S', created_at) as created_at
-        FROM products
+            created_at
+        FROM products 
         WHERE id = ?
         "#
     )
-        .bind(product_id.into_inner())
-        .fetch_one(&**pool)
-        .await
-    {
-        Ok(product) => HttpResponse::Ok().json(product),
-        Err(sqlx::Error::RowNotFound) => HttpResponse::NotFound().json("Product not found"),
+    .bind(product_id)
+    .fetch_optional(&**pool)
+    .await {
+        Ok(Some(row)) => {
+            // Вручную маппим строку в структуру Product
+            let created_at: Option<chrono::NaiveDateTime> = row.get("created_at");
+            
+            let product = Product {
+                id: row.get("id"),
+                name: row.get("name"),
+                description: row.get("description"),
+                price: row.get("price"),
+                stock: row.get("stock"),
+                image_url: row.get("image_url"),
+                category_id: row.get("category_id"),
+                created_at: created_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
+            };
+            
+            println!("✅ Успешно получен продукт: {:?}", product);
+            HttpResponse::Ok().json(product)
+        },
+        Ok(None) => {
+            println!("⚠️ Продукт с ID {} не найден", product_id);
+            HttpResponse::NotFound().json(json!({
+                "error": format!("Продукт с ID {} не найден", product_id)
+            }))
+        },
         Err(e) => {
-            eprintln!("Failed to fetch product: {}", e);
-            HttpResponse::InternalServerError().json("Failed to fetch product")
+            eprintln!("❌ Ошибка при выполнении запроса: {}", e);
+            eprintln!("Детали ошибки: {:?}", e);
+            
+            // Дополнительная информация об ошибках базы данных
+            if let sqlx::Error::Database(db_err) = &e {
+                eprintln!("Код ошибки базы данных: {:?}", db_err.code());
+                eprintln!("Сообщение об ошибке: {}", db_err.message());
+                
+                if let Some(constraint) = db_err.constraint() {
+                    eprintln!("Нарушение ограничения: {}", constraint);
+                }
+            }
+            
+            HttpResponse::InternalServerError().json(json!({
+                "error": "Ошибка базы данных",
+                "details": e.to_string(),
+                "product_id": product_id
+            }))
         }
     }
 }
 
+#[post("/products")]
+#[doc = "// Создание нового продукта"]
 pub async fn create_product(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     product: web::Json<CreateProduct>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     println!("Received product: {:?}", product);
 
     if let Some(category_id) = product.category_id {
@@ -150,7 +238,7 @@ pub async fn create_product(
             "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
         )
             .bind(category_id)
-            .fetch_one(&**pool)
+            .fetch_one(pool)
             .await
         {
             Ok(exists) => exists,
@@ -177,7 +265,7 @@ pub async fn create_product(
         .bind(product.stock)
         .bind(&product.image_url)
         .bind(product.category_id)
-        .execute(&**pool)
+        .execute(pool)
         .await
     {
         Ok(_) => HttpResponse::Created().json("Product created"),
@@ -189,11 +277,13 @@ pub async fn create_product(
 }
 
 #[put("/products/{id}")]
+#[doc = "// Обновление продукта"]
 pub async fn update_product(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     product_id: web::Path<i64>,
     product: web::Json<CreateProduct>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let id = product_id.into_inner();
     println!("Updating product {}: {:?}", id, product);
 
@@ -202,7 +292,7 @@ pub async fn update_product(
         "SELECT EXISTS(SELECT 1 FROM products WHERE id = ?)"
     )
         .bind(id)
-        .fetch_one(&**pool)
+        .fetch_one(pool)
         .await
     {
         Ok(exists) => exists,
@@ -222,7 +312,7 @@ pub async fn update_product(
             "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
         )
             .bind(category_id)
-            .fetch_one(&**pool)
+            .fetch_one(pool)
             .await
         {
             Ok(exists) => exists,
@@ -252,7 +342,7 @@ pub async fn update_product(
         .bind(&product.image_url)
         .bind(product.category_id)
         .bind(id)
-        .execute(&**pool)
+        .execute(pool)
         .await
     {
         Ok(_) => HttpResponse::Ok().json("Product updated"),
@@ -264,16 +354,18 @@ pub async fn update_product(
 }
 
 #[delete("/products/{id}")]
+#[doc = "// Удаление продукта"]
 pub async fn delete_product(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     product_id: web::Path<i64>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let id = product_id.into_inner();
 
     // Сначала удаляем связанные записи из корзины
     match sqlx::query("DELETE FROM cart WHERE product_id = ?")
         .bind(id)
-        .execute(&**pool)
+        .execute(pool)
         .await
     {
         Ok(_) => println!("DEBUG: Removed cart items for product {}", id),
@@ -287,7 +379,7 @@ pub async fn delete_product(
     // Затем удаляем сам товар
     match sqlx::query("DELETE FROM products WHERE id = ?")
         .bind(id)
-        .execute(&**pool)
+        .execute(pool)
         .await
     {
         Ok(result) if result.rows_affected() > 0 => HttpResponse::NoContent().finish(),
@@ -298,10 +390,12 @@ pub async fn delete_product(
         }
     }
 }
+
 pub async fn get_products_by_category(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     category_id: web::Path<i64>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let cat_id = category_id.into_inner();
 
     match sqlx::query_as::<_, Product>(
@@ -320,7 +414,7 @@ pub async fn get_products_by_category(
         "#
     )
         .bind(cat_id)
-        .fetch_all(&**pool)
+        .fetch_all(pool)
         .await
     {
         Ok(products) => HttpResponse::Ok().json(products),
@@ -332,9 +426,14 @@ pub async fn get_products_by_category(
 }
 
 // Categories handlers
-pub async fn list_categories(pool: web::Data<SqlitePool>) -> impl Responder {
+#[get("/categories")]
+#[doc = "// Получение списка категорий"]
+pub async fn list_categories(
+    state: web::Data<AppState>,
+) -> impl Responder {
+    let pool = &state.db_pool;
     match sqlx::query_as::<_, Category>("SELECT * FROM categories")
-        .fetch_all(&**pool)
+        .fetch_all(pool)
         .await
     {
         Ok(categories) => HttpResponse::Ok().json(categories),
@@ -346,13 +445,15 @@ pub async fn list_categories(pool: web::Data<SqlitePool>) -> impl Responder {
 }
 
 #[get("/categories/{id}")]
+#[doc = "// Получение категории по ID"]
 pub async fn get_category(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     category_id: web::Path<i64>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     match sqlx::query_as::<_, Category>("SELECT * FROM categories WHERE id = ?")
         .bind(category_id.into_inner())
-        .fetch_one(&**pool)
+        .fetch_one(pool)
         .await
     {
         Ok(category) => HttpResponse::Ok().json(category),
@@ -364,17 +465,20 @@ pub async fn get_category(
     }
 }
 
+#[post("/categories")]
+#[doc = "// Создание новой категории"]
 pub async fn create_category(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     category: web::Json<CreateCategory>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     match sqlx::query(
         "INSERT INTO categories (name, description, image_url) VALUES (?, ?, ?)"
     )
         .bind(&category.name)
         .bind(&category.description)
         .bind(&category.image_url)
-        .execute(&**pool)
+        .execute(pool)
         .await
     {
         Ok(_) => HttpResponse::Created().json("Category created"),
@@ -386,11 +490,13 @@ pub async fn create_category(
 }
 
 #[put("/categories/{id}")]
+#[doc = "// Обновление категории"]
 pub async fn update_category(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     category_id: web::Path<i64>,
-    category: web::Json<CreateCategory>,
+    category: web::Json<UpdateCategory>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let id = category_id.into_inner();
 
     // Check if category exists
@@ -398,7 +504,7 @@ pub async fn update_category(
         "SELECT EXISTS(SELECT 1 FROM categories WHERE id = ?)"
     )
         .bind(id)
-        .fetch_one(&**pool)
+        .fetch_one(pool)
         .await
     {
         Ok(exists) => exists,
@@ -420,7 +526,7 @@ pub async fn update_category(
         .bind(&category.description)
         .bind(&category.image_url)
         .bind(id)
-        .execute(&**pool)
+        .execute(pool)
         .await
     {
         Ok(_) => HttpResponse::Ok().json("Category updated"),
@@ -431,10 +537,13 @@ pub async fn update_category(
     }
 }
 
+#[delete("/categories/{id}")]
+#[doc = "// Удаление категории"]
 pub async fn delete_category(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     category_id: web::Path<i64>,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let id = category_id.into_inner();
 
     // Check if category has products
@@ -442,24 +551,24 @@ pub async fn delete_category(
         "SELECT COUNT(*) FROM products WHERE category_id = ?"
     )
         .bind(id)
-        .fetch_one(&**pool)
+        .fetch_one(pool)
         .await
     {
         Ok(count) if count > 0 => {
-            HttpResponse::BadRequest().json("Cannot delete category with products")
+            return HttpResponse::BadRequest()
+                .json("Cannot delete category with existing products");
         },
         Ok(_) => {
-            match sqlx::query("DELETE FROM categories WHERE id = ?")
+            // No products, safe to delete
+            if let Err(e) = sqlx::query("DELETE FROM categories WHERE id = ?")
                 .bind(id)
-                .execute(&**pool)
+                .execute(pool)
                 .await
             {
-                Ok(_) => HttpResponse::NoContent().finish(),
-                Err(e) => {
-                    eprintln!("Failed to delete category: {}", e);
-                    HttpResponse::InternalServerError().json("Failed to delete category")
-                }
+                eprintln!("Failed to delete category: {}", e);
+                return HttpResponse::InternalServerError().json("Failed to delete category");
             }
+            HttpResponse::NoContent().finish()
         },
         Err(e) => {
             eprintln!("Failed to check category products: {}", e);
@@ -468,13 +577,13 @@ pub async fn delete_category(
     }
 }
 
-// Cart handlers
 #[post("/cart")]
 pub async fn add_to_cart(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     item: web::Json<CartItemRequest>,
     session: Session,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let session_id = match session.get::<String>("session_id") {
         Ok(Some(id)) => id,
         Ok(None) => {
@@ -488,21 +597,21 @@ pub async fn add_to_cart(
         }
     };
 
-    // Check if product exists
+    // Проверяем существование продукта
+    let product_id = item.product_id;
     match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM products WHERE id = ?")
-        .bind(item.product_id)
-        .fetch_one(&**pool)
-        .await
-    {
-        Ok(count) if count == 0 => {
-            return HttpResponse::NotFound().json("Product not found");
-        }
-        Err(e) => {
-            eprintln!("Failed to check product: {}", e);
-            return HttpResponse::InternalServerError().json("Failed to check product");
-        }
-        _ => {}
-    };
+        .bind(product_id)
+        .fetch_one(pool)
+        .await {
+            Ok(count) if count == 0 => {
+                return HttpResponse::NotFound().json("Product not found");
+            },
+            Err(e) => {
+                eprintln!("Failed to check product: {}", e);
+                return HttpResponse::InternalServerError().json("Failed to check product");
+            },
+            _ => {}
+        };
 
     // Check if item already in cart
     match sqlx::query_as::<_, CartItem>(
@@ -510,7 +619,7 @@ pub async fn add_to_cart(
     )
         .bind(item.product_id)
         .bind(&session_id)
-        .fetch_optional(&**pool)
+        .fetch_optional(pool)
         .await
     {
         Ok(Some(existing_item)) => {
@@ -521,7 +630,7 @@ pub async fn add_to_cart(
             )
                 .bind(new_quantity)
                 .bind(existing_item.id)
-                .execute(&**pool)
+                .execute(pool)
                 .await
             {
                 Ok(_) => HttpResponse::Ok().json("Cart updated"),
@@ -539,7 +648,7 @@ pub async fn add_to_cart(
                 .bind(item.product_id)
                 .bind(item.quantity)
                 .bind(&session_id)
-                .execute(&**pool)
+                .execute(pool)
                 .await
             {
                 Ok(_) => HttpResponse::Created().json("Item added to cart"),
@@ -558,9 +667,10 @@ pub async fn add_to_cart(
 
 #[get("/cart")]
 pub async fn get_cart(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     session: Session,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let session_id = match session.get::<String>("session_id") {
         Ok(Some(id)) => id,
         _ => return HttpResponse::Ok().json(Vec::<CartItemWithProduct>::new()),
@@ -575,7 +685,7 @@ pub async fn get_cart(
         "#
     )
         .bind(&session_id)
-        .fetch_all(&**pool)
+        .fetch_all(pool)
         .await
     {
         Ok(items) => HttpResponse::Ok().json(items),
@@ -589,11 +699,12 @@ pub async fn get_cart(
 // Обновление количества товара в корзине
 #[put("/cart/{id}")]
 pub async fn update_cart_item(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     item_id: web::Path<i64>,
     quantity: web::Json<HashMap<String, i32>>,  // Изменили тип параметра
     session: Session,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let session_id = match session.get::<String>("session_id") {
         Ok(Some(id)) => id,
         _ => return HttpResponse::Unauthorized().json("Session required"),
@@ -608,7 +719,7 @@ pub async fn update_cart_item(
         .bind(new_quantity)
         .bind(item_id.into_inner())
         .bind(session_id)
-        .execute(&**pool)
+        .execute(pool)
         .await {
         Ok(result) if result.rows_affected() > 0 => HttpResponse::Ok().json("Quantity updated"),
         Ok(_) => HttpResponse::NotFound().json("Item not found"),
@@ -619,10 +730,11 @@ pub async fn update_cart_item(
 // Удаление товара из корзины
 #[delete("/cart/{id}")]
 pub async fn remove_cart_item(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     item_id: web::Path<i64>,
     session: Session,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let session_id = match session.get::<String>("session_id") {
         Ok(Some(id)) => id,
         _ => return HttpResponse::Unauthorized().json("Session required"),
@@ -633,7 +745,7 @@ pub async fn remove_cart_item(
     )
         .bind(item_id.into_inner())
         .bind(session_id)
-        .execute(&**pool)
+        .execute(pool)
         .await {
         Ok(result) if result.rows_affected() > 0 => HttpResponse::NoContent().finish(),
         Ok(_) => HttpResponse::NotFound().json("Item not found"),
@@ -642,11 +754,11 @@ pub async fn remove_cart_item(
 }
 
 
-#[get("/cart/count")]
 pub async fn get_cart_count(
-    pool: web::Data<SqlitePool>,
+    state: web::Data<AppState>,
     session: Session,
 ) -> impl Responder {
+    let pool = &state.db_pool;
     let session_id = match session.get::<String>("session_id") {
         Ok(Some(id)) => id,
         _ => return HttpResponse::Ok().json(0),
@@ -656,7 +768,7 @@ pub async fn get_cart_count(
         "SELECT SUM(quantity) FROM cart WHERE session_id = ?"
     )
         .bind(&session_id)
-        .fetch_one(&**pool)
+        .fetch_one(pool)
         .await
     {
         Ok(Some(count)) => HttpResponse::Ok().json(count),
@@ -675,6 +787,7 @@ async fn create_payment(
     state: web::Data<AppState>,
     data: web::Json<HashMap<String, serde_json::Value>>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let pool = &state.db_pool;
     let user_id = data["user_id"].as_i64()
         .ok_or(actix_web::error::ErrorBadRequest("Invalid user_id"))?;
 
@@ -699,12 +812,13 @@ async fn create_payment(
     })))
 }
 
-
 #[post("/orders")]
-async fn create_order(
+pub async fn create_order(
     state: web::Data<AppState>,
     session: Session
 ) -> Result<HttpResponse, actix_web::Error> {
+    let pool = &state.db_pool;
+    
     // Получаем ID сессии
     let session_id = match session.get::<String>("session_id") {
         Ok(Some(id)) => id,
@@ -715,8 +829,6 @@ async fn create_order(
             new_id
         }
     };
-
-    let db = &state.db_pool;
 
     // Создаем новый заказ из корзины
     let order_id = sqlx::query_scalar::<_, i64>(
@@ -730,7 +842,7 @@ async fn create_order(
         "#
     )
         .bind(session_id)
-        .fetch_one(db)
+        .fetch_one(pool)
         .await
         .map_err(|e| {
             eprintln!("Ошибка создания заказа: {:?}", e);
@@ -749,38 +861,85 @@ async fn create_order(
     })))
 }
 
-
-
-
+// Helper function to list all tables in the database
+async fn list_all_tables(pool: &SqlitePool) -> Result<Vec<String>, sqlx::Error> {
+    println!("\nListing all tables in the database...");
+    let tables = sqlx::query("SELECT name FROM sqlite_master WHERE type='table'")
+        .fetch_all(pool)
+        .await?;
+    
+    let mut table_names = Vec::new();
+    for table in tables {
+        let name: String = table.get(0);
+        println!("- {}", name);
+        table_names.push(name);
+    }
+    
+    if table_names.is_empty() {
+        println!("⚠️  No tables found in the database");
+    } else {
+        println!("Found {} tables", table_names.len());
+    }
+    
+    Ok(table_names)
+}
 
 ////////////////////////////////////////////
 // Обновление количества товара в корзин
 
-
 // Конфигурация маршрутов
+// Simple health check endpoint
+async fn health_check() -> impl Responder {
+    HttpResponse::Ok().json("Server is running!")
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
-            // Products routes
-            .service(get_product)
-            .route("/products", web::get().to(list_products))
-            .route("/products", web::post().to(create_product))
+            // Health check endpoint
+            .service(
+                web::resource("/health")
+                    .route(web::get().to(health_check))
+            )
+                        // Products routes - using service() for handlers with macros
+            .service(list_products)
+            .service(create_product)
             .service(update_product)
             .service(delete_product)
-            .route("/categories/{id}/products", web::get().to(get_products_by_category))
-            // Categories routes
-            .route("/categories", web::get().to(list_categories))
-            .route("/categories", web::post().to(create_category))
+            // Регистрируем обработчики для получения продукта
+            .service(
+                web::resource("/product/{id}")
+                    .route(web::get().to(get_product_handler))
+            )
+            .service(
+                web::resource("/products/{id}")
+                    .route(web::get().to(get_product_handler))
+            )
+            .service(
+                web::resource("/categories/{id}/products")
+                    .route(web::get().to(get_products_by_category))
+            )
+            
+            // Categories routes - using service() for handlers with macros
+            .service(list_categories)
+            .service(create_category)
             .service(get_category)
             .service(update_category)
-            .route("/categories/{id}", web::delete().to(delete_category))
-            // Cart routes
+            .service(delete_category)
+            
+            // Cart routes - using service() for handlers with macros
             .service(add_to_cart)
             .service(get_cart)
-            .service(remove_cart_item)  // Исправлено с remove_from_cart на remove_cart_item
-            .service(get_cart_count)
             .service(update_cart_item)
-            // Order and payment routes
+            .service(remove_cart_item)
+            
+            // Cart count route - using route() for handlers without macros
+            .service(
+                web::resource("/cart/count")
+                    .route(web::get().to(get_cart_count))
+            )
+            
+            // Order and payment routes - using service() for handlers with macros
             .service(create_order)
             .service(create_payment)
     );

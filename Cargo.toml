@@ -7,6 +7,14 @@ description = "Sport nutrition e-commerce"
 license = "MIT"
 repository = "https://github.com/AlexZemliakov/SportShop"
 
+[[bin]]
+name = "check_db"
+path = "check_db.rs"
+
+[[bin]]
+name = "test_db"
+path = "test_db.rs"
+
 [dependencies]
 actix-web = "4.0"
 serde = { version = "1.0", features = ["derive"] }
