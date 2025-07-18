@@ -1,8 +1,54 @@
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use chrono::NaiveDateTime;
+use sqlx::{FromRow, Row};
+use chrono::{NaiveDateTime, DateTime, Utc};
 
-#[derive(Debug, FromRow, Serialize, Deserialize)]
+// Кастомная сериализация/десериализация для Option<NaiveDateTime>
+pub mod naive_datetime_serde {
+    use super::*;
+    use serde::{Serializer, Deserializer, de::Error};
+
+    pub fn serialize<S>(
+        date: &Option<NaiveDateTime>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match date {
+            Some(dt) => serializer.serialize_i64(dt.and_utc().timestamp()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<Option<NaiveDateTime>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let timestamp: Option<i64> = Option::deserialize(deserializer)?;
+        match timestamp {
+            Some(ts) => Ok(Some(
+                DateTime::from_timestamp(ts, 0)
+                    .ok_or_else(|| D::Error::custom("invalid timestamp"))?
+                    .naive_utc(),
+            )),
+            None => Ok(None),
+        }
+    }
+}
+
+// Вспомогательная структура для работы с SQLx
+#[derive(sqlx::FromRow)]
+struct RawDateTime(Option<DateTime<Utc>>);
+
+impl From<RawDateTime> for Option<NaiveDateTime> {
+    fn from(raw: RawDateTime) -> Self {
+        raw.0.map(|dt| dt.naive_local())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Category {
     pub id: i64,
     pub name: String,
@@ -10,15 +56,35 @@ pub struct Category {
     pub image_url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Product {
     pub id: i32,
     pub name: String,
     pub price: f64,
     pub stock: i32,
-    pub description: String, // Добавьте это поле
+    pub description: String,
     pub image_url: String,
     pub category_id: i32,
+    #[serde(with = "naive_datetime_serde", skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<NaiveDateTime>,
+}
+
+// Реализация FromRow для Product с ручным маппингом дат
+impl<'r> sqlx::FromRow<'r, sqlx::sqlite::SqliteRow> for Product {
+    fn from_row(row: &'r sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
+        let created_at: Option<DateTime<Utc>> = row.try_get("created_at")?;
+
+        Ok(Product {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            price: row.try_get("price")?,
+            stock: row.try_get("stock")?,
+            description: row.try_get("description")?,
+            image_url: row.try_get("image_url")?,
+            category_id: row.try_get("category_id")?,
+            created_at: created_at.map(|dt| dt.naive_local()),
+        })
+    }
 }
 
 
@@ -32,15 +98,17 @@ pub struct ProductCreate {
     pub stock: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: i64,
     pub telegram_id: Option<i64>,
     pub username: Option<String>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
-    pub created_at: NaiveDateTime,
+    #[serde(with = "naive_datetime_serde")]
+    pub created_at: Option<NaiveDateTime>,
 }
+// Остальные модели по аналогии...
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserCreate {
@@ -50,18 +118,21 @@ pub struct UserCreate {
     pub last_name: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Order {
     pub id: i64,
     pub user_id: i64,
-    pub status: String, // "new", "processing", "completed", "cancelled"
+    pub status: String,
     pub total_amount: f64,
     pub ton_address: Option<String>,
-    pub payment_status: String, // "pending", "paid", "failed"
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub payment_status: String,
+    #[serde(with = "naive_datetime_serde")]
+    pub created_at: Option<NaiveDateTime>,
+    #[serde(with = "naive_datetime_serde")]
+    pub updated_at: Option<NaiveDateTime>,
     pub comments: Option<String>,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderCreate {
@@ -71,6 +142,7 @@ pub struct OrderCreate {
     pub comments: Option<String>,
 }
 
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderUpdate {
     pub status: Option<String>,
@@ -78,7 +150,7 @@ pub struct OrderUpdate {
     pub comments: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct OrderItem {
     pub id: i64,
     pub order_id: i64,
@@ -86,6 +158,7 @@ pub struct OrderItem {
     pub quantity: i32,
     pub price_at_order: f64,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderItemCreate {
@@ -95,18 +168,21 @@ pub struct OrderItemCreate {
     pub price_at_order: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct CartItem {
     pub id: i64,
     pub product_id: i64,
     pub quantity: i32,
-    pub user_session: String, // Или user_id если есть аутентификация
+    pub user_session: String,
 }
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CartItemRequest {
     pub product_id: i64,
     pub quantity: i32,
 }
+
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CartItemCreate {
     pub user_id: i64,
@@ -114,12 +190,12 @@ pub struct CartItemCreate {
     pub quantity: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct Admin {
     pub id: i64,
     pub username: String,
     pub password_hash: String,
-    pub role: String, // "manager", "admin"
+    pub role: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -129,11 +205,13 @@ pub struct AdminCreate {
     pub role: String,
 }
 
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AdminLogin {
     pub username: String,
     pub password: String,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PaymentRequest {
@@ -149,3 +227,22 @@ pub struct PaymentResponse {
     pub message: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Payment {
+    pub id: i32,
+    pub order_id: String,
+    pub user_id: i64,
+    pub amount: f64,
+    pub wallet_address: String,
+    pub status: String,
+    #[serde(with = "naive_datetime_serde")]
+    pub created_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NewPayment {
+    pub order_id: String,
+    pub user_id: i64,
+    pub amount: f64,
+    pub wallet_address: String,
+}

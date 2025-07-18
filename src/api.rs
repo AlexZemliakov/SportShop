@@ -3,25 +3,7 @@ use actix_web::{get, post, web, HttpResponse, Responder, delete, put};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use actix_session::Session;
-use chrono::Utc;
 use uuid::Uuid;
-use serde_json::json;
-
-#[derive(Debug, Deserialize)]
-pub struct CheckoutRequest {
-    pub items: Vec<CartItem>,
-    pub address: String,
-    pub total: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
-pub struct Order {
-    pub id: i64,
-    pub session_id: String,
-    pub total: f64,
-    pub address: String,
-    pub created_at: chrono::DateTime<Utc>,
-}
 
 #[derive(Debug, Serialize, FromRow)]
 #[allow(dead_code)]
@@ -517,103 +499,7 @@ pub async fn remove_cart_item(
     }
 }
 
-#[post("/checkout")]
-pub async fn checkout(
-    pool: web::Data<SqlitePool>,
-    request: web::Json<CheckoutRequest>,
-    session: Session,
-) -> impl Responder {
-    let session_id = match session.get::<String>("session_id") {
-        Ok(Some(id)) => id,
-        Ok(None) => {
-            return HttpResponse::BadRequest().json("Session not found");
-        }
-        Err(e) => {
-            eprintln!("Failed to get session: {}", e);
-            return HttpResponse::InternalServerError().json("Session error");
-        }
-    };
 
-    // Validate address
-    if request.address.trim().is_empty() {
-        return HttpResponse::BadRequest().json("Address is required");
-    }
-
-    // Begin transaction
-    let mut tx = match pool.begin().await {
-        Ok(tx) => tx,
-        Err(e) => {
-            eprintln!("Failed to begin transaction: {}", e);
-            return HttpResponse::InternalServerError().json("Failed to start transaction");
-        }
-    };
-
-    // Convert DateTime to string format that SQLite understands
-    let now = Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S").to_string();
-
-    // Create order
-    let order_id = match sqlx::query_scalar::<_, i64>(
-        "INSERT INTO orders (session_id, total, address, created_at) VALUES (?, ?, ?, ?) RETURNING id"
-    )
-        .bind(&session_id)
-        .bind(request.total)
-        .bind(&request.address)
-        .bind(now)  // Используем строковое представление даты
-        .fetch_one(&mut *tx)
-        .await
-    {
-        Ok(id) => id,
-        Err(e) => {
-            eprintln!("Failed to create order: {}", e);
-            return HttpResponse::InternalServerError().json("Failed to create order");
-        }
-    };
-
-    // Add order items
-    for item in &request.items {
-        match sqlx::query(
-            "INSERT INTO order_items (order_id, product_id, quantity) VALUES (?, ?, ?)"
-        )
-            .bind(order_id)
-            .bind(item.product_id)
-            .bind(item.quantity)
-            .execute(&mut *tx)
-            .await
-        {
-            Ok(_) => {},
-            Err(e) => {
-                eprintln!("Failed to add order item: {}", e);
-                return HttpResponse::InternalServerError().json("Failed to add order items");
-            }
-        }
-    }
-
-    // Clear cart
-    match sqlx::query(
-        "DELETE FROM cart WHERE session_id = ?"
-    )
-        .bind(&session_id)
-        .execute(&mut *tx)
-        .await
-    {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("Failed to clear cart: {}", e);
-            return HttpResponse::InternalServerError().json("Failed to clear cart");
-        }
-    }
-
-    // Commit transaction
-    if let Err(e) = tx.commit().await {
-        eprintln!("Failed to commit transaction: {}", e);
-        return HttpResponse::InternalServerError().json("Failed to complete checkout");
-    }
-
-    HttpResponse::Ok().json(json!({
-        "success": true,
-        "order_id": order_id
-    }))
-}
 #[get("/cart/count")]
 pub async fn get_cart_count(
     pool: web::Data<SqlitePool>,
@@ -663,6 +549,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .service(remove_cart_item)  // Исправлено с remove_from_cart на remove_cart_item
             .service(get_cart_count)
             .service(update_cart_item)
-            .service(checkout)
     );
 }

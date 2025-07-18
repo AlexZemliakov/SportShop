@@ -97,50 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        document.getElementById('checkoutBtn').addEventListener('click', function() {
-            const address = document.getElementById('deliveryAddress').value.trim();
-
-            if (!address) {
-                alert('Пожалуйста, введите адрес доставки');
-                return;
-            }
-
-            // Получаем текущую корзину
-            const cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-            if (cart.length === 0) {
-                alert('Ваша корзина пуста');
-                return;
-            }
-
-            // Отправляем данные на сервер
-            fetch('/api/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    items: cart,
-                    address: address,
-                    total: calculateTotal(cart)
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Заказ успешно оформлен!');
-                        localStorage.removeItem('cart');
-                        updateCartCount(0);
-                        renderCartItems();
-                    } else {
-                        alert('Ошибка при оформлении заказа: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Произошла ошибка при оформлении заказа');
-                });
-        });
+        document.getElementById('checkoutBtn')?.addEventListener('click', checkout);
     }
 
     // Изменение количества товара
