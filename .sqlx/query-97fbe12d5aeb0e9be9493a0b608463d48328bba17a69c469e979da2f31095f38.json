@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE orders SET status = 'completed', dialog_active = FALSE WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "97fbe12d5aeb0e9be9493a0b608463d48328bba17a69c469e979da2f31095f38"
+}

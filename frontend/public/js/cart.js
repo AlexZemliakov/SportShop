@@ -176,14 +176,49 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Получаем адрес доставки от пользователя
+        const deliveryAddress = prompt('Введите адрес доставки:');
+        if (!deliveryAddress || deliveryAddress.trim() === '') {
+            alert('Адрес доставки обязателен!');
+            return;
+        }
+
+        // Получаем данные пользователя из Telegram WebApp (если доступно)
+        let userId = 12345; // Временный ID для тестирования
+        let telegramUsername = null;
+        
+        // Если запущено в Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+            const user = window.Telegram.WebApp.initDataUnsafe.user;
+            if (user) {
+                userId = user.id;
+                telegramUsername = user.username;
+            }
+        }
+
+        const orderData = {
+            user_id: userId,
+            delivery_address: deliveryAddress.trim(),
+            telegram_username: telegramUsername
+        };
+
         try {
             const response = await fetch('/api/orders', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
             });
 
             if (response.ok) {
-                alert('Заказ оформлен! Спасибо за покупку!');
+                const result = await response.json();
+                alert(`Заказ №${result.order_id} оформлен! Проверьте Telegram для подтверждения и оплаты.`);
                 await Promise.all([loadCartItems(), updateCartCounter()]);
+            } else {
+                const error = await response.json();
+                console.error('Ошибка сервера:', error);
+                showError(error.error || 'Ошибка оформления заказа');
             }
         } catch (error) {
             console.error('Ошибка:', error);

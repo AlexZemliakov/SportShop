@@ -122,14 +122,17 @@ pub struct UserCreate {
 pub struct Order {
     pub id: i64,
     pub user_id: i64,
-    pub status: String,
     pub total_amount: f64,
-    pub ton_address: Option<String>,
-    pub payment_status: String,
-    #[serde(with = "naive_datetime_serde")]
+    pub status: String,
+    pub delivery_address: Option<String>,
+    pub dialog_active: Option<bool>,
+    pub telegram_message_id: Option<i64>,
+    #[serde(with = "naive_datetime_serde", skip_serializing_if = "Option::is_none")]
     pub created_at: Option<NaiveDateTime>,
     #[serde(with = "naive_datetime_serde")]
     pub updated_at: Option<NaiveDateTime>,
+    pub ton_address: Option<String>,
+    pub payment_status: String,
     pub comments: Option<String>,
 }
 

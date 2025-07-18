@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE orders SET telegram_message_id = ?, dialog_active = TRUE WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "bcbf01593db8c86ec056681702866767a46e0ba768d44a06b0cf1dcb90fe3466"
+}

@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT o.id, o.user_id, o.total_amount, o.delivery_address, o.created_at \n             FROM orders o WHERE o.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "total_amount",
+        "ordinal": 2,
+        "type_info": "Float"
+      },
+      {
+        "name": "delivery_address",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "ba5cedf7c6b2752b2b4859d21c8d8c576527dd2405ae8ebd6ea7733fd4fbedf1"
+}

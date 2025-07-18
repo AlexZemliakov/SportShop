@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT oi.quantity, p.name \n             FROM order_items oi \n             JOIN products p ON oi.product_id = p.id \n             WHERE oi.order_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "quantity",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "dea0eb07e4a700b1f954b6e7b35deb7a425bce9d05fdc4c0168448dd07ed2a26"
+}

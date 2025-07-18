@@ -7,7 +7,8 @@ CREATE TABLE payments (
                           wallet_address TEXT NOT NULL,
                           status TEXT NOT NULL DEFAULT 'pending',
                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                          ton_payment_id TEXT
+                          ton_payment_id TEXT,
+                          transaction_hash TEXT
 );
 
 -- Down

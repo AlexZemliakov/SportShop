@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT c.product_id, c.quantity, p.name, p.price\n        FROM cart c\n        JOIN products p ON c.product_id = p.id\n        WHERE c.session_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "product_id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "quantity",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "price",
+        "ordinal": 3,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e4bb066a4b6eed94569ed6fbad8a60acd1ccd976a41d22a85eac0ee54bc31869"
+}

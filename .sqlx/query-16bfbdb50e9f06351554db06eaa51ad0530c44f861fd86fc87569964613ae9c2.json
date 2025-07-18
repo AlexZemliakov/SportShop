@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT total_amount FROM orders WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "total_amount",
+        "ordinal": 0,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "16bfbdb50e9f06351554db06eaa51ad0530c44f861fd86fc87569964613ae9c2"
+}
