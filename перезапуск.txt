@@ -1,0 +1,27 @@
+1. Остановите текущий сервис
+sudo systemctl stop sportshop
+
+2 Удалиите старый проект
+cd /opt/
+rm -rf SportShop 
+
+3 загрузите новый проект
+
+4 перейдите в проект
+cd /opt/SportShop
+
+cargo build --release
+
+5 перезапустите
+sudo systemctl daemon-reload
+sudo systemctl start sportshop
+sudo systemctl enable sportshop  # Если нужно автозапускание при перезагрузке
+
+6 Убедитесь, что сервис запустился без ошибок:
+sudo journalctl -u sportshop -f
+
+7. Перезагрузите Nginx
+sudo systemctl reload nginx
+
+
+Если проект использует .env-файл, скопируйте его в новую папку /opt/SportShop/.env
