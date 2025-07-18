@@ -80,8 +80,8 @@ impl TelegramBot {
                     "SELECT id, user_id, total_amount FROM orders WHERE id = ?",
                     order_id
                 )
-                .fetch_one(&bot_instance.notifier.db_pool)
-                .await?;
+                    .fetch_one(&bot_instance.notifier.db_pool)
+                    .await?;
 
                 // Создать оплату
                 let (_payment_id, payment_url) = bot_instance.ton_processor.create_payment(order.user_id, order.total_amount).await?;
@@ -89,7 +89,7 @@ impl TelegramBot {
                 // Ответ пользователю
                 bot.answer_callback_query(q.id).await?;
                 bot.send_message(
-                    ChatId(q.from.id.0 as i64), 
+                    ChatId(q.from.id.0 as i64),
                     format!("Оплата создана! Оплатите по ссылке: {}", payment_url)
                 ).await?;
             } else if data.starts_with("complete_") {

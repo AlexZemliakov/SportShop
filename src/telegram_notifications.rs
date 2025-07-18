@@ -36,8 +36,8 @@ impl TelegramNotifier {
             "SELECT id, user_id, total_amount, status FROM orders WHERE id = ?",
             order_id
         )
-        .fetch_one(&self.db_pool)
-        .await?;
+            .fetch_one(&self.db_pool)
+            .await?;
 
         let keyboard = InlineKeyboardMarkup::new(vec![vec![
             InlineKeyboardButton::callback("Выполнено", format!("complete_{}", order_id))
@@ -45,12 +45,12 @@ impl TelegramNotifier {
 
         // Отправляем сообщение в группу администраторов
         self.bot.send_message(
-            ChatId(self.admin_chat_id), 
+            ChatId(self.admin_chat_id),
             format!("Новый заказ №{} на сумму {} ₽.", order.id, order.total_amount)
         )
-        .reply_markup(keyboard)
-        .send()
-        .await?;
+            .reply_markup(keyboard)
+            .send()
+            .await?;
 
         Ok(())
     }
@@ -66,29 +66,29 @@ impl TelegramNotifier {
                     "UPDATE orders SET status = 'completed' WHERE id = ?",
                     order_id
                 )
-                .execute(&self.db_pool)
-                .await?;
+                    .execute(&self.db_pool)
+                    .await?;
 
                 // Получаем информацию о заказе
                 let order = sqlx::query!(
                     "SELECT id, user_id, total_amount, status FROM orders WHERE id = ?",
                     order_id
                 )
-                .fetch_one(&self.db_pool)
-                .await?;
+                    .fetch_one(&self.db_pool)
+                    .await?;
 
                 // Отвечаем на callback query
                 self.bot.answer_callback_query(callback_query.id).await?;
 
                 // Отправляем сообщение администратору
                 self.bot.send_message(
-                    ChatId(callback_query.from.id.0 as i64), 
+                    ChatId(callback_query.from.id.0 as i64),
                     "Заказ отмечен как выполненный"
                 ).await?;
 
                 // Отправляем сообщение пользователю
                 self.bot.send_message(
-                    ChatId(order.user_id), 
+                    ChatId(order.user_id),
                     format!("Ваш заказ №{} отправлен. Спасибо за покупку!", order_id)
                 ).await?;
             }
@@ -128,8 +128,8 @@ impl TelegramNotifier {
             "SELECT id, user_id, total_amount, status FROM orders WHERE id = ?",
             payment.order_id
         )
-        .fetch_one(&self.db_pool)
-        .await?;
+            .fetch_one(&self.db_pool)
+            .await?;
 
         let message = format!(
             "💰 *Оплата получена*\n\
@@ -162,8 +162,8 @@ impl TelegramNotifier {
             "SELECT id, user_id, status FROM orders WHERE id = ?",
             order_id
         )
-        .fetch_one(&self.db_pool)
-        .await?;
+            .fetch_one(&self.db_pool)
+            .await?;
 
         let mut message = format!(
             "✅ *Заказ \\#{} выполнен*\n\
@@ -193,19 +193,19 @@ impl TelegramNotifier {
             "SELECT id, user_id, total_amount FROM orders WHERE id = ?",
             order_id
         )
-        .fetch_one(&self.db_pool)
-        .await?;
+            .fetch_one(&self.db_pool)
+            .await?;
 
         let keyboard = InlineKeyboardMarkup::new(vec![vec![
             InlineKeyboardButton::callback("Оплатить", format!("pay_{}", order_id))
         ]]);
 
         self.bot.send_message(
-            ChatId(order.user_id), 
+            ChatId(order.user_id),
             format!("Ваш заказ №{} на сумму {} ₽.", order.id, order.total_amount)
         )
-        .reply_markup(keyboard)
-        .await?;
+            .reply_markup(keyboard)
+            .await?;
 
         Ok(())
     }
@@ -213,11 +213,11 @@ impl TelegramNotifier {
     fn order_actions_keyboard(&self, order_id: i64) -> InlineKeyboardMarkup {
         InlineKeyboardMarkup::new(vec![
             vec![InlineKeyboardButton::callback(
-                "✅ Выполнено", 
+                "✅ Выполнено",
                 format!("complete_{}", order_id)
             )],
             vec![InlineKeyboardButton::callback(
-                "✏️ Комментировать", 
+                "✏️ Комментировать",
                 format!("comment_{}", order_id)
             )],
             vec![InlineKeyboardButton::url(

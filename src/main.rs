@@ -99,7 +99,6 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .service(api::checkout)
             .wrap(cors)
             .wrap(
                 SessionMiddleware::builder(
