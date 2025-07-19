@@ -25,3 +25,87 @@ sudo systemctl reload nginx
 
 
 Если проект использует .env-файл, скопируйте его в новую папку /opt/SportShop/.env
+
+----------перезапуск
+sudo systemctl stop sportshop
+cargo build --release
+sudo systemctl daemon-reload
+sudo systemctl start sportshop
+sudo systemctl enable sportshop 
+sudo systemctl reload nginx
+sudo journalctl -u sportshop -f
+
+НАстройка nginx для сервера:
+файл
+ команда для ред: nano /etc/nginx/sites-available/sportshop
+состав файла:
+server {
+    listen 443 ssl http2;
+    server_name 24musoroff.ru www.24musoroff.ru;
+
+    # Корневая директория с фронтендом
+    root /opt/SportShop/frontend/public;
+    index index.html;
+
+    # SSL-настройки (Certbot)
+    ssl_certificate /etc/letsencrypt/live/24musoroff.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/24musoroff.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Специальные правила для страниц
+    location = /cart {
+        try_files /cart.html =404;
+    }
+
+    location = /product {
+        try_files /product.html =404;
+    }
+
+    # Админка
+    location /admin {
+        alias /opt/SportShop/frontend/public/admin;
+        try_files $uri $uri/ /admin/index.html;
+    }
+
+    # API бекенда
+    location /api {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Статические файлы
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+
+    # Защитные заголовки (ИСПРАВЛЕНО для Telegram WebApp)
+    add_header X-Frame-Options "ALLOWALL";
+    add_header X-Content-Type-Options "nosniff";
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+    # CSP для Telegram WebApp (разрешаем iframe)
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self' 'unsafe-inline'; frame-ancestors *; img-src 'self' data: https:;";
+    # Отключение кэширования для теста (можно удалить в продакшене)
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    expires 0;
+}  # ← ДОБАВЬТЕ ЭТУ СКОБКУ!
+
+server {
+    listen 80;
+    server_name 24musoroff.ru www.24musoroff.ru;
+
+    # Редирект HTTP -> HTTPS
+    return 301 https://$host$request_uri;
+}
+
+
+
+
