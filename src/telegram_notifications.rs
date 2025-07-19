@@ -268,6 +268,21 @@ impl TelegramNotifier {
         Ok(())
     }
 
+    // 8. Инициализация диалога с пользователем (для случаев ChatNotFound)
+    pub async fn initialize_user_dialog(&self, user_id: i64) -> Result<(), NotificationError> {
+        // Отправляем приветственное сообщение для инициализации диалога
+        self.bot
+            .send_message(
+                ChatId(user_id),
+                "👋 Добро пожаловать в SportShop!\n\nВаш заказ обрабатывается..."
+            )
+            .parse_mode(ParseMode::Markdown)
+            .send()
+            .await?;
+
+        Ok(())
+    }
+
     // 7. Проверка активности диалога
     pub async fn is_dialog_active(&self, user_id: i64) -> Result<bool, NotificationError> {
         let result = sqlx::query!(

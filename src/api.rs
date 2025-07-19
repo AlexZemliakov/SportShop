@@ -867,8 +867,38 @@ pub async fn create_order(
         },
         Err(e) => {
             eprintln!("⚠️ Не удалось отправить сообщение в Telegram: {:?}", e);
-            println!("ℹ️ Это нормально при тестировании с фиктивным user_id");
-            println!("ℹ️ В продакшене WebApp будет запущен внутри Telegram с реальным user_id");
+            
+            // Если ошибка ChatNotFound, попробуем инициализировать диалог
+            if e.to_string().contains("ChatNotFound") {
+                println!("🔄 Попытка инициализации диалога с пользователем...");
+                
+                // Попробуем отправить приветственное сообщение
+                if let Err(init_error) = state.telegram_notifier.initialize_user_dialog(order_data.user_id).await {
+                    eprintln!("❌ Не удалось инициализировать диалог: {:?}", init_error);
+                    println!("ℹ️ Пользователь должен сначала написать боту /start");
+                } else {
+                    println!("✅ Диалог инициализирован, повторная попытка отправки заказа...");
+                    
+                    // Повторная попытка отправки заказа
+                    if let Err(retry_error) = state.telegram_notifier.send_order_confirmation(
+                        order_id,
+                        order_data.user_id,
+                        &cart_items.iter().map(|item| crate::telegram_notifications::CartItemData {
+                            product_id: item.get("product_id"),
+                            quantity: item.get("quantity"),
+                            name: item.get("name"),
+                            price: item.get("price"),
+                        }).collect::<Vec<_>>(),
+                        &order_data.delivery_address,
+                        total_amount,
+                        order_data.telegram_username.as_deref()
+                    ).await {
+                        eprintln!("❌ Повторная попытка не удалась: {:?}", retry_error);
+                    } else {
+                        println!("✅ Заказ отправлен после инициализации диалога");
+                    }
+                }
+            }
         }
     }
 

@@ -183,17 +183,50 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Получаем данные пользователя из Telegram WebApp (если доступно)
-        let userId = 12345; // Временный ID для тестирования
+        // Инициализируем Telegram WebApp
+        let userId = null;
         let telegramUsername = null;
         
-        // Если запущено в Telegram WebApp
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
-            const user = window.Telegram.WebApp.initDataUnsafe.user;
-            if (user) {
+        console.log('=== Telegram WebApp Debug Info ===');
+        console.log('window.Telegram:', window.Telegram);
+        console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
+        
+        // Проверяем доступность Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            
+            console.log('Telegram WebApp version:', tg.version);
+            console.log('Telegram WebApp initData:', tg.initData);
+            console.log('Telegram WebApp initDataUnsafe:', tg.initDataUnsafe);
+            
+            // Инициализируем WebApp
+            tg.ready();
+            
+            // Получаем данные пользователя
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
                 userId = user.id;
                 telegramUsername = user.username;
+                
+                console.log('✅ Получен реальный user_id:', userId);
+                console.log('✅ Username:', telegramUsername);
+            } else {
+                console.warn('⚠️ Данные пользователя не найдены в initDataUnsafe');
+                console.log('Доступные данные:', tg.initDataUnsafe);
             }
+        } else {
+            console.error('❌ Telegram WebApp не доступен');
+            console.log('Возможные причины:');
+            console.log('1. WebApp запущен не из Telegram');
+            console.log('2. Неправильная настройка в BotFather');
+            console.log('3. Проблемы с загрузкой Telegram Web App API');
+        }
+
+        // Если не удалось получить user_id, показываем ошибку
+        if (!userId) {
+            alert('Ошибка: Не удалось получить данные пользователя из Telegram.\n\nПожалуйста, убедитесь что:\n1. Вы открыли WebApp из Telegram бота\n2. WebApp правильно настроен в BotFather');
+            console.error('❌ Не удалось получить user_id из Telegram WebApp');
+            return;
         }
 
         const orderData = {
@@ -201,6 +234,9 @@ document.addEventListener('DOMContentLoaded', function() {
             delivery_address: deliveryAddress.trim(),
             telegram_username: telegramUsername
         };
+
+        console.log('=== Отправка заказа ===');
+        console.log('Order data:', orderData);
 
         try {
             const response = await fetch('/api/orders', {
@@ -215,6 +251,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const result = await response.json();
                 alert(`Заказ №${result.order_id} оформлен! Проверьте Telegram для подтверждения и оплаты.`);
                 await Promise.all([loadCartItems(), updateCartCounter()]);
+                
+                // Закрываем WebApp после успешного заказа
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.close();
+                }
             } else {
                 const error = await response.json();
                 console.error('Ошибка сервера:', error);
